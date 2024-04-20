@@ -31,3 +31,10 @@ body {
     text-wrap: balance;
   }
 }
+
+.button {
+  @apply py-1 px-2 cursor-pointer rounded-md;
+  &.button-primary {
+    @apply  bg-primary-600 text-white shadow-xl hover:bg-primary-700 hover:shadow-md;
+  }
+}
