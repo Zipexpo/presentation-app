@@ -5,7 +5,7 @@
 }
 
 .wrapper{
-    width: 500px;
+    max-width: 500px;
     background-color: var(--bgSoft);
     padding: 50px;
     display: flex;

@@ -38,3 +38,22 @@ body {
     @apply  bg-primary-600 text-white shadow-xl hover:bg-primary-700 hover:shadow-md;
   }
 }
+
+.form{
+  @apply flex flex-col text-center gap-3;
+  input{
+    @apply p-3 bg-neutral-100 border-none rounded;
+  }
+  .button{
+    @apply font-bold;
+  }
+  label {
+    @apply text-left ml-1 text-sm;
+  }
+}
+
+.flex-c-c{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

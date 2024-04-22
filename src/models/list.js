@@ -16,7 +16,7 @@ const listSchema = new Schema({
         type: Number,
         required: true,
       },
-      critical: {
+      criteria: {
         type: [{
           quote: String,
           selection: [String]
