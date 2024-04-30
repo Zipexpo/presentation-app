@@ -35,16 +35,16 @@ body {
 .button {
   @apply py-1 px-2 cursor-pointer rounded-md;
   &.button-primary {
-    @apply  bg-primary-600 text-white shadow-xl hover:bg-primary-700 hover:shadow-md;
+    @apply bg-primary-600 text-white shadow-xl hover:bg-primary-700 hover:shadow-md;
   }
 }
 
-.form{
+.form {
   @apply flex flex-col text-center gap-3;
-  input{
+  input {
     @apply p-3 bg-neutral-100 border-none rounded;
   }
-  .button{
+  .button {
     @apply font-bold;
   }
   label {
@@ -52,7 +52,7 @@ body {
   }
 }
 
-.flex-c-c{
+.flex-c-c {
   display: flex;
   align-items: center;
   justify-content: center;

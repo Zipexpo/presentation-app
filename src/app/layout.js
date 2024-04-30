@@ -1,7 +1,7 @@
-import { inter } from '@/ui/font';
+import { inter } from "@/ui/font";
 import "@/ui/globals.css";
-import Nav from '@/ui/Nav/Nav';
-import { AuthProvider } from './Provider';
+import Nav from "@/ui/Nav/Nav";
+import { AuthProvider } from "./Provider";
 
 export const metadata = {
   title: "Presenation app",
@@ -13,12 +13,10 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${inter.className} antialiased min-h-screen flex-col `}>
         <AuthProvider>
-          <div className='flex-none'>
-            <Nav/>
+          <div className="flex-none">
+            <Nav />
           </div>
-          <div className='grow'>
-              {children}
-          </div>
+          <div className="grow">{children}</div>
         </AuthProvider>
       </body>
     </html>
