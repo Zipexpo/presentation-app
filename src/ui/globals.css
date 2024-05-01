@@ -32,11 +32,8 @@ body {
   }
 }
 
-.button {
-  @apply py-1 px-2 cursor-pointer rounded-md;
-  &.button-primary {
-    @apply bg-primary-600 text-white shadow-xl hover:bg-primary-700 hover:shadow-md disabled:bg-primary-300 disabled:cursor-not-allowed;
-  }
+.btn {
+  @apply shadow-xl hover:shadow-md;
 }
 
 .form {
@@ -44,7 +41,7 @@ body {
   input {
     @apply p-3 bg-neutral-100 border-none rounded;
   }
-  .button {
+  .btn {
     @apply font-bold;
   }
   label {

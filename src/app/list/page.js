@@ -1,38 +1,41 @@
-import ListCard from '@/ui/ListCard/ListCard'
+import ListCard from "@/ui/ListCard/ListCard";
 import Link from "next/link";
-import { auth } from "@/lib/auth"
+import { auth } from "@/lib/auth";
 
 const getData = async () => {
   const session = await auth();
-  const res = await fetch(process.env.NEXTAIU_URL+"/api/list", {headers:{userid:session?.user?.id},next:{revalidate:3600}});
-
+  const res = await fetch(process.env.NEXTAIU_URL + "/api/list", {
+    headers: { userid: session?.user?.id },
+    method: "GET",
+    next: { revalidate: 30, tags: ["list"] },
+  });
   if (!res.ok) {
-
-    throw new Error("Something went wrong");
+    return { editable: false, lists: [] };
   }
-
-  return res.json();
+  return { editable: true, lists: await res.json() };
 };
 
 const ListPage = async () => {
-
   // FETCH DATA WITH AN API
-  const lists = await getData();
-
-  // FETCH DATA WITHOUT AN API
-  // const posts = await getPosts();
+  const { editable, lists } = await getData();
 
   return (
-    <div className="md:container md:mx-auto" >
-      <div className='flex justify-between shadow-xl bg-white rounded-md py-2 px-4 mx-auto max-w-md'>
+    <div className="md:container md:mx-auto">
+      <div className="flex justify-between shadow-xl bg-white rounded-md py-2 px-4 mx-auto max-w-md">
         <div></div>
-        <Link className='button button-primary'  href='list/new'>New show</Link>
+        {editable && (
+          <Link className="btn btn-primary" href="list/new">
+            New show
+          </Link>
+        )}
       </div>
-      {lists.map((list) => (
-        <div className={styles.post} key={list.id}>
-          <ListCard post={list} />
-        </div>
-      ))}
+      <div className="flex flex-col gap-2 my-3">
+        {lists.map((list) => (
+          <div className={""} key={list.id}>
+            <ListCard post={list} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

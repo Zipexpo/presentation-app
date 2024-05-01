@@ -1,11 +1,10 @@
 "use client";
 import { useFieldArray } from "react-hook-form";
-function CriteriaSelectionField ({ name, register, error, control }){
+function CriteriaSelectionField({ name, register, error, control }) {
   const { fields, append, remove } = useFieldArray({
     name,
     control,
   });
-  console.log(name)
   return (
     <>
       {fields.map((field, index) => {
@@ -25,7 +24,7 @@ function CriteriaSelectionField ({ name, register, error, control }){
             <div className="h-full flex justify-start items-start">
               <button
                 type="button"
-                className="button bg-red-700 hover:bg-red-900 text-white"
+                className="btn bg-red-700 hover:bg-red-900 text-white"
                 onClick={() => remove(index)}
               >
                 x
@@ -36,14 +35,12 @@ function CriteriaSelectionField ({ name, register, error, control }){
       })}
       <button
         type="button"
-        className="block button button-primary"
-        onClick={() =>
-          append({text:""})
-        }
+        className="block btn btn-primary"
+        onClick={() => append({ text: "" })}
       >
         Append
       </button>
     </>
   );
-};
+}
 export default CriteriaSelectionField;

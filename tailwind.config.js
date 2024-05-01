@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
-import colors from 'tailwindcss/colors';
+import colors from "tailwindcss/colors";
+import typography from "@tailwindcss/typography";
+import daisyui from "daisyui";
 
 module.exports = {
   content: [
@@ -8,13 +10,16 @@ module.exports = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {
-      colors:{
-        primary: colors.indigo,
-        secondary: colors.yellow,
-        neutral: colors.gray,
-      }
-    },
+    // extend: {
+    //   colors: {
+    //     primary: colors.indigo,
+    //     secondary: colors.yellow,
+    //     neutral: colors.gray,
+    //   },
+    // },
   },
-  plugins: [],
+  plugins: [typography, daisyui],
+  daisyui: {
+    themes: ["winter", "dark"],
+  },
 };

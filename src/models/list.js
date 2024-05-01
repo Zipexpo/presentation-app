@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import slug from "mongoose-slug-generator";
-mongoose.plugin(slug);
+import { sluggerPlugin } from "mongoose-slugger-plugin";
 
 const listSchema = new Schema(
   {
@@ -8,7 +7,6 @@ const listSchema = new Schema(
       type: String,
       required: true,
     },
-    slug: { type: String, slug: "title", unique: true },
     presenDate: {
       type: Date,
       required: true,
@@ -22,12 +20,12 @@ const listSchema = new Schema(
         {
           cid: String,
           quote: String,
-          selection: [String],
+          selection: { type: [{ text: String }] },
         },
       ],
       required: true,
     },
-    creator: {
+    user: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -44,6 +42,4 @@ const listSchema = new Schema(
   { timestamps: true }
 );
 
-const List = mongoose.models?.List || mongoose.model("List", listSchema);
-
-export default List;
+export default mongoose.models?.List || mongoose.model("List", listSchema);

@@ -1,15 +1,16 @@
 "use client";
 
-import { createList } from "@/lib/action";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
 import Link from "next/link";
 import FormField from "../FormField/FormField";
 import { listSchema } from "./listSchema";
 import CriteriaField from "../CriteriaField/CriteriaField";
 
-const ListForm = () => {
+const ListForm = ({ userid }) => {
+  const router = useRouter();
+  const contentType = "application/json";
   const {
     register,
     formState: { errors, success, isDirty, isValid, isValidating },
@@ -21,10 +22,24 @@ const ListForm = () => {
     resolver: zodResolver(listSchema, undefined, { rawValues: true }),
   });
 
-  const onSubmit =  (data) => {
-    alert("Hey")
-    console.log("SUCCESS", data);
-    // createList(data);
+  const onSubmit = async (data) => {
+    try {
+      const res = await fetch("/api/list", {
+        method: "POST",
+        headers: {
+          userid,
+          // Accept: contentType,
+          // "Content-Type": contentType,
+        },
+        body: JSON.stringify(data),
+      });
+      if (res.status !== 201) {
+        console.log("Something wrong");
+      } else router.push("/list");
+    } catch (error) {
+      console.log(error);
+      console.log("Something wrong");
+    }
   };
   const isSubmittable = !!isDirty && !!isValid;
   return (
@@ -45,7 +60,7 @@ const ListForm = () => {
         name="durationEach"
         register={register}
         error={errors?.durationEach}
-        valueAsNumber 
+        valueAsNumber
         subfix="minutes"
       />
       <FormField
@@ -66,25 +81,18 @@ const ListForm = () => {
       />
 
       <div className="flex justify-between">
-        <button form="newlist" type="submit" disabled={!isSubmittable} className="button button-primary">Save</button>
-        <Link href="/list" className="button">
+        <button
+          form="newlist"
+          type="submit"
+          disabled={!isSubmittable}
+          className="btn btn-primary"
+        >
+          Save
+        </button>
+        <Link href="/list" className="btn ">
           Cancel
         </Link>
       </div>
-      <div className="w-full flex">
-          <div className="w-1/2 space-y-4">
-            <h3>is valid:</h3>
-            <code>{isValid + ""}</code>
-
-            <h3>is dirty:</h3>
-            <code>{isDirty + ""}</code>
-
-            <h3>is validating:</h3>
-            <code>{isValidating + ""}</code>
-            <h3>error:</h3>
-            <code>{JSON.stringify(errors?.message)}</code>
-          </div>
-        </div>
     </form>
   );
 };

@@ -40,7 +40,7 @@ const CriteriaField = ({ name, register, error, control, title }) => {
                 <div className="h-full flex justify-start items-start">
                   <button
                     type="button"
-                    className="button bg-red-700 hover:bg-red-900 text-white"
+                    className="btn bg-red-700 hover:bg-red-900 text-white"
                     onClick={() => remove(index)}
                   >
                     x
@@ -63,7 +63,7 @@ const CriteriaField = ({ name, register, error, control, title }) => {
       </div>
       <button
         type="button"
-        className="button button-primary"
+        className="btn btn-primary"
         onClick={() =>
           append({
             cid: "",
