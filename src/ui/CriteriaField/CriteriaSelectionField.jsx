@@ -1,33 +1,22 @@
 "use client";
 import { useFieldArray } from "react-hook-form";
-const CriteriaSelectionField = ({ name, register, error, control }) => {
+function CriteriaSelectionField ({ name, register, error, control }){
   const { fields, append, remove } = useFieldArray({
     name,
     control,
   });
-
+  console.log(name)
   return (
     <>
       {fields.map((field, index) => {
-        const errorForField = error?.[index]?.quote;
-        const errorForcid = error?.[index]?.cid;
+        const errorForField = error?.[index].text;
         return (
           <div className="flex h-16 items-center gap-2" key={field.id}>
-            <div className="w-1/4 my-32">
-              <input
-                {...register(`${name}.${index}.cid`)}
-                placeholder="id"
-                defaultValue={field.cid}
-                className="border p-2 border-gray-300 w-full"
-              />
-              <p>{errorForcid?.message ?? <>&nbsp;</>}</p>
-            </div>
-
             <div className="grow my-32">
               <input
-                {...register(`${name}.${index}.quote`)}
+                {...register(`${name}.${index}.text`)}
                 placeholder="Enter a text.."
-                defaultValue={field.quote}
+                defaultValue={field.text}
                 className="border p-2 border-gray-300 w-full"
               />
               <p>{errorForField?.message ?? <>&nbsp;</>}</p>
@@ -49,10 +38,7 @@ const CriteriaSelectionField = ({ name, register, error, control }) => {
         type="button"
         className="block button button-primary"
         onClick={() =>
-          append({
-            cid: "",
-            quote: "",
-          })
+          append({text:""})
         }
       >
         Append

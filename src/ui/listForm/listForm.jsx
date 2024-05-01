@@ -12,7 +12,7 @@ import CriteriaField from "../CriteriaField/CriteriaField";
 const ListForm = () => {
   const {
     register,
-    formState: { errors, success },
+    formState: { errors, success, isDirty, isValid, isValidating },
     handleSubmit,
     control,
     setError,
@@ -21,19 +21,22 @@ const ListForm = () => {
     resolver: zodResolver(listSchema, undefined, { rawValues: true }),
   });
 
-  const onSubmit = (data) => {
-    data.criteria = criteria;
-    createList(data);
+  const onSubmit =  (data) => {
+    alert("Hey")
+    console.log("SUCCESS", data);
+    // createList(data);
   };
+  const isSubmittable = !!isDirty && !!isValid;
   return (
-    <form className="form" action={handleSubmit(onSubmit)}>
+    <form id="newlist" className="form" onSubmit={handleSubmit(onSubmit)}>
       <FormField
         type="text"
         placeholder="Title"
         name="title"
         title="Title"
         register={register}
-        error={errors.title}
+        error={errors?.title}
+        required={true}
       />
       <FormField
         title="Duration"
@@ -41,7 +44,8 @@ const ListForm = () => {
         placeholder="Duration each presentation"
         name="durationEach"
         register={register}
-        error={errors.durationEach}
+        error={errors?.durationEach}
+        valueAsNumber 
         subfix="minutes"
       />
       <FormField
@@ -50,23 +54,37 @@ const ListForm = () => {
         name="presenDate"
         title="Present Date"
         register={register}
-        error={errors.presenDate}
+        required={true}
+        error={errors?.presenDate}
       />
       <CriteriaField
-        name="presenDate"
+        name="criteria"
         title="Criterias"
         register={register}
         control={control}
         error={errors?.criteria}
       />
-      {errors.title && <span>Title required!</span>}
-      {success && <div className="toast">Success save!</div>}
+
       <div className="flex justify-between">
-        <button className="button button-primary">Save</button>
+        <button form="newlist" type="submit" disabled={!isSubmittable} className="button button-primary">Save</button>
         <Link href="/list" className="button">
           Cancel
         </Link>
       </div>
+      <div className="w-full flex">
+          <div className="w-1/2 space-y-4">
+            <h3>is valid:</h3>
+            <code>{isValid + ""}</code>
+
+            <h3>is dirty:</h3>
+            <code>{isDirty + ""}</code>
+
+            <h3>is validating:</h3>
+            <code>{isValidating + ""}</code>
+            <h3>error:</h3>
+            <code>{JSON.stringify(errors?.message)}</code>
+          </div>
+        </div>
     </form>
   );
 };

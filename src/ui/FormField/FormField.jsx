@@ -7,6 +7,7 @@ const FormField = ({
   valueAsNumber,
   title,
   subfix,
+  required,
 }) => (
   <>
     {title && <label className="-mb-2">{title}</label>}
@@ -15,7 +16,7 @@ const FormField = ({
         className="grow"
         type={type}
         placeholder={placeholder}
-        {...register(name, { valueAsNumber })}
+        {...register(name, { valueAsNumber,valueAsDate:type==='date',required })}
       />
       {subfix && <span>{subfix}</span>}
     </div>

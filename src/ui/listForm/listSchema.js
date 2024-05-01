@@ -4,18 +4,16 @@ export const criteriaSchema = z.object({
   cid: z
     .string({
       required_error: "required field",
-    })
-    .min(1),
-  quote: z.string().min(1),
-  selection: z.array(z.string().min(1)),
+    }),
+  quote: z.string(),
+  selection: z.array(z.object({text:z.string()})),
 });
 
 export const listSchema = z.object({
   title: z
     .string({
-      required_error: "required field",
-    })
-    .min(1),
+      required_error: "required field"
+    }),
   presenDate: z.date({
     required_error: "Please select a date",
     invalid_type_error: "That's not a date!",
