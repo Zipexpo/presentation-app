@@ -10,7 +10,6 @@ import CriteriaField from "../CriteriaField/CriteriaField";
 
 const ListForm = ({ userid }) => {
   const router = useRouter();
-  const contentType = "application/json";
   const {
     register,
     formState: { errors, success, isDirty, isValid, isValidating },
@@ -35,7 +34,7 @@ const ListForm = ({ userid }) => {
       });
       if (res.status !== 201) {
         console.log("Something wrong");
-      } else router.push("/list");
+      } else router.back();
     } catch (error) {
       console.log(error);
       console.log("Something wrong");
@@ -89,9 +88,9 @@ const ListForm = ({ userid }) => {
         >
           Save
         </button>
-        <Link href="/list" className="btn ">
+        <button onClick={()=>router.back()} className="btn ">
           Cancel
-        </Link>
+        </button>
       </div>
     </form>
   );

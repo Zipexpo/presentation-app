@@ -1,8 +1,8 @@
-export default function Layout({ children }) {
+export default function Layout({ children,presentor }) {
   return (
     <>
-      {/* <div>{auth}</div> */}
       <div>{children}</div>
+      <div>{presentor}</div>
     </>
   );
 }

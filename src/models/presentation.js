@@ -13,7 +13,7 @@ const presentationSchema = new Schema({
     type: [
       {
         name: String,
-        id: String,
+        sid: String,
       },
     ],
   },

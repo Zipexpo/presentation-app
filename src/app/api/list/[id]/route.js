@@ -5,11 +5,10 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { revalidateTag } from "next/cache";
 
-export const GET = async (request) => {
+export const GET = async (request,{ params }) => {
   try {
-    const {
-      query: { id },
-    } = request;
+    const { id } = params;
+    console.log(id)
     connectToDb();
     const lists = await List.findOne({ id: id });
     return NextResponse.json(lists);
