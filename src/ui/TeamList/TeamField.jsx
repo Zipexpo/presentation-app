@@ -12,18 +12,18 @@ const TeamField = ({ name, register, error, control, title, defaultValue={} }) =
       <div className="flex flex-col gap-2 mt-2">
         {fields.map((field, index) => {
           const errorForField = error?.[index]?.quote;
-          const errorForcid = error?.[index]?.cid;
+          const errorForname = error?.[index]?.name;
           return (
             <div className="bg-slate-300/50 p-3 rounded-lg">
               <div className="flex h-16 items-center gap-2" key={field.id}>
                 <div className="w-1/4 my-32">
                   <input
-                    {...register(`${name}.${index}.cid`)}
-                    placeholder="id"
-                    defaultValue={field.cid}
+                    {...register(`${name}.${index}.name`)}
+                    placeholder="name"
+                    defaultValue={field.name}
                     className="border p-2 border-gray-300 w-full"
                   />
-                  <p>{errorForcid?.message ?? <>&nbsp;</>}</p>
+                  <p>{errorForname?.message ?? <>&nbsp;</>}</p>
                 </div>
 
                 <div className="grow my-32">

@@ -5,9 +5,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import {teamListSchema} from "./TeamListschema"
-import FormField from "../FormField/FormField";
+import TeamField from "./TeamField";
 import {useMemo} from 'react';
-const defaultValue = {};
+const defaultValue = {name: "",
+    order: 0,
+    member: []
+};
 const TeamList = ({ userid, value }) => {
     const router = useRouter();
     const {
@@ -36,13 +39,14 @@ const TeamList = ({ userid, value }) => {
     const isSubmittable = !!isDirty && !!isValid;
     return (
         <form id="newlist" className="form" onSubmit={handleSubmit(onSubmit)}>
-            <TeamField
+            <input type="file"></input>
+            {/* <TeamField
                 name="presentation"
                 register={register}
                 control={control}
                 error={errors?.presentation}
                 defaultValue={defaultValue}
-            />
+            /> */}
             <div className="flex justify-between">
                 <button
                 form="newlist"
