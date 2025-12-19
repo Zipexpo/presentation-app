@@ -185,18 +185,8 @@ const LinkBadge = ({ url }) => {
 export default function TopicSubmissionForm({ topicId, topicConfig, existingSubmission }) {
     const config = topicConfig || {};
 
-    const getEmbedUrl = (url) => {
-        if (!url) return '';
-        if (url.includes('youtube.com') || url.includes('youtu.be')) {
-            const videoId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop();
-            return `https://www.youtube.com/embed/${videoId}`;
-        }
-        if (url.includes('vimeo.com')) {
-            const videoId = url.split('/').pop();
-            return `https://player.vimeo.com/video/${videoId}`;
-        }
-        return url;
-    };
+    // URL helper used from outer scope
+
 
     const getDocViewerUrl = (url) => {
         if (!url) return '';
