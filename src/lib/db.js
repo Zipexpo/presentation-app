@@ -21,9 +21,6 @@ export async function connectToDB() {
     cached.promise = mongoose
       .connect(MONGODB_URI, {
         bufferCommands: false,
-        maxPoolSize: 10, // Optimize for serverless/lambda limits
-        serverSelectionTimeoutMS: 5000, // Fail fast if network/DNS issues
-        socketTimeoutMS: 45000, // Close sockets after inactivity
       })
       .then((mongooseInstance) => mongooseInstance);
   }
