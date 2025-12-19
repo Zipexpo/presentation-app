@@ -3,6 +3,7 @@ import { Video, Presentation, Link as LinkIcon, Palette, FileText, MonitorPlay, 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
+import FeedbackModal from '@/components/ui/FeedbackModal';
 
 const PDFPreview = dynamic(() => import('./PDFPreview'), { ssr: false });
 
@@ -213,7 +214,8 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
 
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [error, setError] = useState('');
+    // Consolidated feedback state for Modal
+    const [feedback, setFeedback] = useState({ isOpen: false, type: 'error', title: '', message: '' });
     const [videoTitle, setVideoTitle] = useState('');
     const [showCoverUrlInput, setShowCoverUrlInput] = useState(false);
     const [pendingDeletions, setPendingDeletions] = useState([]);
@@ -380,7 +382,8 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
-        setError('');
+        // Reset feedback
+        setFeedback({ isOpen: false, type: 'error', title: '', message: '' });
 
         try {
             const payload = {
@@ -418,7 +421,12 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
             setSuccess(true);
             // Don't clear form if updating, maybe just show success
         } catch (err) {
-            setError(err.message);
+            setFeedback({
+                isOpen: true,
+                type: 'error',
+                title: 'Submission Failed',
+                message: err.message || 'An unexpected error occurred.'
+            });
         } finally {
             setSubmitting(false);
         }
@@ -440,6 +448,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
 
 
 
+
     const addMemberFromDialog = (memberData) => {
         const exists = members.some(m =>
             (m.email && m.email === memberData.email) ||
@@ -447,7 +456,12 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
         );
 
         if (exists) {
-            alert('This member is already in the list.');
+            setFeedback({
+                isOpen: true,
+                type: 'error',
+                title: 'Duplicate Member',
+                message: 'This student is already added to your team list.'
+            });
             return;
         }
         setMembers([...members, memberData]);
@@ -455,6 +469,15 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
 
     return (
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100 my-8">
+
+            {/* Global Error Alert */}
+            <FeedbackModal
+                isOpen={feedback.isOpen}
+                onClose={() => setFeedback({ ...feedback, isOpen: false })}
+                type={feedback.type}
+                title={feedback.title}
+                message={feedback.message}
+            />
 
             {/* Hero / Thumbnail Section */}
             <div className="relative h-48 sm:h-64 bg-gray-100 group">
@@ -896,7 +919,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                     )}
                 </div>
 
-                {error && <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>}
+
 
             </div>
 

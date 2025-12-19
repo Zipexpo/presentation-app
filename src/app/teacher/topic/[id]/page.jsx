@@ -6,6 +6,13 @@ import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ExternalLink, Video, FileText, ImageIcon } from 'lucide-react'
 
 export default function TopicDetailPage() {
   const { id } = useParams()
@@ -39,6 +46,8 @@ export default function TopicDetailPage() {
     title: '', description: '', submissionDeadline: '', presentationDate: '',
     submissionConfig: { includeSourceCode: false, includeThumbnail: false, includeMaterials: false, includeGroupName: false }
   });
+
+  const [selectedProject, setSelectedProject] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -470,9 +479,10 @@ export default function TopicDetailPage() {
                 <tr>
                   <th className="px-3 py-2 text-left font-medium text-gray-700">Project</th>
                   <th className="px-3 py-2 text-left font-medium text-gray-700">Group</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">Members</th>
                   <th className="px-3 py-2 text-left font-medium text-gray-700">Submitted At</th>
                   <th className="px-3 py-2 text-left font-medium text-gray-700">Links</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-700">Materials</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
@@ -485,7 +495,16 @@ export default function TopicDetailPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2">{p.groupNumber ?? '-'}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-sm text-gray-600">
+                      <div className="flex flex-col">
+                        {p.members && p.members.length > 0 ? (
+                          p.members.map((m, idx) => (
+                            <span key={idx} className="whitespace-nowrap" title={m.email}>{m.name}</span>
+                          ))
+                        ) : <span className="text-gray-400">-</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-500">
                       {p.submittedAt
                         ? new Date(p.submittedAt).toLocaleString()
                         : '-'}
@@ -493,14 +512,11 @@ export default function TopicDetailPage() {
                     <td className="px-3 py-2 space-x-2 text-xs">
                       {p.videoLink && <a href={p.videoLink} target="_blank" className="text-blue-600 underline">Video</a>}
                       {p.presentationLink && <a href={p.presentationLink} target="_blank" className="text-blue-600 underline">Slides</a>}
-                      {p.sourceCodeLink && <a href={p.sourceCodeLink} target="_blank" className="text-blue-600 underline">Code</a>}
                     </td>
-                    <td className="px-3 py-2 text-xs">
-                      {p.additionalMaterials?.map((m, i) => (
-                        <div key={i}>
-                          <a href={m.url} target="_blank" className="text-blue-600 underline">{m.label || 'Material'}</a>
-                        </div>
-                      ))}
+                    <td className="px-3 py-2">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedProject(p)}>
+                        View Details
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -509,6 +525,108 @@ export default function TopicDetailPage() {
           </div>
         )}
       </section>
+
+      {/* Detail Modal */}
+      <Dialog open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
+        <DialogContent className="max-w-3xl overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              {selectedProject?.projectName}
+              {selectedProject?.groupNumber && <span className="text-sm bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">Group {selectedProject.groupNumber}</span>}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedProject && (
+            <div className="space-y-6">
+              {/* Hero / Thumbnail */}
+              {selectedProject.thumbnailUrl && (
+                <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+                  <img src={selectedProject.thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              {/* Team Members */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2 border-b pb-1">Team Members</h3>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {selectedProject.members && selectedProject.members.length > 0 ? selectedProject.members.map((m, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                      <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">
+                        {m.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">{m.name}</div>
+                        <div className="text-xs text-gray-500">{m.email} / {m.studentId}</div>
+                      </div>
+                    </div>
+                  )) : <p className="text-gray-500 italic">No members listed.</p>}
+                </div>
+              </div>
+
+              {/* Primary Links */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2 border-b pb-1">Primary Links</h3>
+                <div className="flex flex-wrap gap-3">
+                  {selectedProject.videoLink && (
+                    <a href={selectedProject.videoLink} target="_blank" className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition">
+                      <Video className="w-5 h-5" /> Demo Video
+                      <ExternalLink className="w-3 h-3 opacity-50" />
+                    </a>
+                  )}
+                  {selectedProject.presentationLink && (
+                    <a href={selectedProject.presentationLink} target="_blank" className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition">
+                      <FileText className="w-5 h-5" /> Presentation Slides
+                      <ExternalLink className="w-3 h-3 opacity-50" />
+                    </a>
+                  )}
+                  {selectedProject.sourceCodeLink && (
+                    <a href={selectedProject.sourceCodeLink} target="_blank" className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                      <ExternalLink className="w-5 h-5" /> Source Code
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Dynamic Resources */}
+              {selectedProject.resources && selectedProject.resources.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2 border-b pb-1">Required Resources</h3>
+                  <div className="grid gap-2">
+                    {selectedProject.resources.map((res, i) => (
+                      <a key={i} href={res.url} target="_blank" className="flex items-center justify-between p-3 border rounded hover:bg-gray-50 group">
+                        <div className="flex items-center gap-2">
+                          {res.type === 'image' ? <ImageIcon className="w-4 h-4 text-purple-500" /> :
+                            res.type === 'pdf' ? <FileText className="w-4 h-4 text-red-500" /> :
+                              <ExternalLink className="w-4 h-4 text-blue-500" />}
+                          <span className="font-medium">{res.label}</span>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-600" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Materials */}
+              {selectedProject.additionalMaterials && selectedProject.additionalMaterials.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2 border-b pb-1">Additional Materials</h3>
+                  <ul className="space-y-1">
+                    {selectedProject.additionalMaterials.map((m, i) => (
+                      <li key={i}>
+                        <a href={m.url} target="_blank" className="text-blue-600 hover:underline flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3" /> {m.label || m.url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div >
   )
 }

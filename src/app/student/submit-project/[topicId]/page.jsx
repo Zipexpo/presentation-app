@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import TopicSubmissionForm from '@/components/student/TopicSubmissionForm';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StudentTopicSubmissionPage() {
     const { topicId } = useParams();
@@ -34,8 +35,63 @@ export default function StudentTopicSubmissionPage() {
         }
     }, [topicId]);
 
-    if (loading) return <div className="container mx-auto p-6">Loading...</div>;
-    if (error) return <div className="container mx-auto p-6 text-red-600">Error: {error}</div>;
+
+    // ...
+
+    if (loading) return (
+        <div className="container mx-auto p-6 max-w-3xl">
+            {/* Header Skeleton */}
+            <div className="mb-8 border-b pb-4 space-y-3">
+                <Skeleton className="h-10 w-2/3" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-4 w-1/4 mt-2" />
+            </div>
+
+            {/* Form Skeleton */}
+            <div className="max-w-2xl mx-auto space-y-8 my-8">
+                {/* Hero */}
+                <Skeleton className="h-48 sm:h-64 w-full rounded-xl" />
+
+                {/* Inputs */}
+                <div className="space-y-6">
+                    <div className="flex gap-4">
+                        <Skeleton className="h-10 w-20 rounded-full" />
+                        <Skeleton className="h-10 flex-1" />
+                    </div>
+                    <Skeleton className="h-14 w-full" />
+
+                    {/* Members */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between">
+                            <Skeleton className="h-6 w-32" />
+                            <Skeleton className="h-8 w-24" />
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <Skeleton className="h-16 w-full rounded-lg" />
+                            <Skeleton className="h-16 w-full rounded-lg" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+    if (error) return (
+        <div className="container mx-auto p-6 max-w-3xl">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex flex-col items-center justify-center text-center space-y-4">
+                <div className="bg-red-100 p-3 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600 w-8 h-8"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                </div>
+                <div>
+                    <h2 className="text-lg font-bold text-red-900">Unable to Load Topic</h2>
+                    <p className="text-red-700 mt-1">{error}</p>
+                </div>
+                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-white border border-red-300 rounded text-red-700 hover:bg-red-50 transition text-sm font-medium">
+                    Try Again
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <div className="container mx-auto p-6 max-w-3xl">

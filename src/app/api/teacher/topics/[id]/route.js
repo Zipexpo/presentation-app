@@ -32,7 +32,7 @@ export async function GET(_req, { params }) {
   }
 
   const projects = await ProjectSubmission.find(
-    { topicId: params.id }
+    { topicId: id }
   )
     .sort({ submittedAt: 1 })
     .lean();
