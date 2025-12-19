@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDB } from '@/lib/db';
 import Class from '@/models/Class';
+import Topic from '@/models/Topic'; // Register Topic model
 import ProjectSubmission from '@/models/ProjectSubmission';
 import User from '@/models/User';
 
