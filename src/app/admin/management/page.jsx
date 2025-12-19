@@ -1,5 +1,7 @@
 import { getTopics, getSubmissions } from '@/lib/api';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ManagementPage() {
   const topics = await getTopics();
   const submissions = await getSubmissions();
