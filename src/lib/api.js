@@ -12,4 +12,9 @@ export async function getSubmissions() {
   return ProjectSubmission.find({}).sort({ createdAt: -1 }).lean();
 }
 
+export async function getActiveTopics() {
+  await connectToDB();
+  return Topic.find({}).sort({ createdAt: -1 }).lean();
+}
+
 
