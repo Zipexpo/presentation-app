@@ -20,7 +20,7 @@ export default function VerificationEmail({ email, token }) {
             </Link>
           </Section>
           <Text style={text}>
-            If you didn't request this, please ignore this email.
+            If you didn&apos;t request this, please ignore this email.
           </Text>
         </Container>
       </Body>
