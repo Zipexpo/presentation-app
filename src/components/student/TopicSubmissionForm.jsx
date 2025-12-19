@@ -2,6 +2,7 @@
 import { Video, Presentation, Link as LinkIcon, Palette, FileText, MonitorPlay, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useSession } from 'next-auth/react';
 
 const PDFPreview = dynamic(() => import('./PDFPreview'), { ssr: false });
 
@@ -183,6 +184,7 @@ const LinkBadge = ({ url }) => {
 };
 
 export default function TopicSubmissionForm({ topicId, topicConfig, existingSubmission }) {
+    const { data: session } = useSession();
     const config = topicConfig || {};
 
     // URL helper used from outer scope
@@ -439,6 +441,15 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
 
 
     const addMemberFromDialog = (memberData) => {
+        const exists = members.some(m =>
+            (m.email && m.email === memberData.email) ||
+            (m.studentId && m.studentId === memberData.studentId)
+        );
+
+        if (exists) {
+            alert('This member is already in the list.');
+            return;
+        }
         setMembers([...members, memberData]);
     };
 
@@ -586,7 +597,27 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                 <span className="w-1 h-6 bg-indigo-500 rounded-full inline-block"></span>
                                 Team Members
                             </h3>
-                            <MemberSearchDialog onAddMember={addMemberFromDialog} topicId={topicId} />
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={session?.user && members.some(m => m.email === session.user.email)}
+                                    onClick={() => {
+                                        if (session?.user) {
+                                            addMemberFromDialog({
+                                                name: session.user.name,
+                                                email: session.user.email,
+                                                studentId: '', // We don't have exact studentId in session yet, use empty
+                                                isRegistered: true
+                                            });
+                                        }
+                                    }}
+                                >
+                                    {session?.user && members.some(m => m.email === session.user.email) ? 'Added' : 'Add Me'}
+                                </Button>
+                                <MemberSearchDialog onAddMember={addMemberFromDialog} topicId={topicId} />
+                            </div>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-2">
