@@ -4,6 +4,7 @@ import User from '@/models/User';
 import DomainRole from '@/models/DomainRole';
 import { sendVerificationEmail } from '@/lib/email';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request) {
   const { email, name, password } = await request.json();

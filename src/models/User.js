@@ -5,6 +5,16 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  username: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  studentId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   email: {
     type: String,
     required: true,
@@ -12,13 +22,14 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    // Optional to support social logins that don't have a local password
+    required: false,
   },
   emailVerified: {
     type: Boolean,
     default: false,
   },
-   accounts: [{
+  accounts: [{
     provider: String, // 'credentials', 'google', 'azure-ad'
     providerAccountId: String,
     accessToken: String,
@@ -30,6 +41,18 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: ['student', 'teacher', 'admin'],
     required: true,
+  },
+  profileCompleted: {
+    type: Boolean,
+    default: false,
+  },
+  active: {
+    type: Boolean,
+    default: true,
+  },
+  mustChangePassword: {
+    type: Boolean,
+    default: false,
   },
 }, { timestamps: true });
 

@@ -29,10 +29,18 @@ export default function Home() {
             <div className="flex items-center space-x-4">
               {session ? (
                 <>
-                  <Link href={session.user.role === 'teacher' ? '/teacher' : '/student'}>
+                  <Link
+                    href={
+                      session.user.role === 'admin'
+                        ? '/admin/management'
+                        : session.user.role === 'teacher'
+                        ? '/teacher'
+                        : '/student'
+                    }
+                  >
                     <Button variant="outline">Dashboard</Button>
                   </Link>
-                  <Link href="/api/signout">
+                  <Link href="/logout">
                     <Button>Sign Out</Button>
                   </Link>
                 </>
@@ -61,7 +69,15 @@ export default function Home() {
           </p>
           <div className="mt-8 flex justify-center space-x-4">
             {session ? (
-              <Link href={session.user.role === 'teacher' ? '/teacher' : '/student'}>
+              <Link
+                href={
+                  session.user.role === 'admin'
+                    ? '/admin/management'
+                    : session.user.role === 'teacher'
+                    ? '/teacher'
+                    : '/student'
+                }
+              >
                 <Button size="lg">Go to Dashboard</Button>
               </Link>
             ) : (

@@ -1,8 +1,17 @@
 import mongoose from 'mongoose';
 
+// Explicit sub-schema to ensure correct casting
+const ResourceSchema = new mongoose.Schema({
+  label: String,
+  url: String,
+  type: String
+}, { _id: false });
+
 const ProjectSubmissionSchema = new mongoose.Schema({
   topicId: { type: mongoose.Schema.Types.ObjectId, ref: 'Topic', required: true },
+  submitterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional for backward compatibility, but should be required for new ones
   groupNumber: { type: Number },
+  groupName: { type: String },
   projectName: { type: String, required: true },
   members: [
     {
@@ -13,7 +22,10 @@ const ProjectSubmissionSchema = new mongoose.Schema({
   ],
   videoLink: String,
   storageLink: String,
+  sourceCodeLink: String,
+  thumbnailUrl: String,
   presentationLink: String,
+
   screenshotUrls: [String],
   additionalMaterials: [
     {
@@ -21,13 +33,22 @@ const ProjectSubmissionSchema = new mongoose.Schema({
       url: String
     }
   ],
+  resources: {
+    type: [ResourceSchema],
+    default: []
+  },
   submittedAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
-ProjectSubmissionSchema.pre('save', function(next) {
+ProjectSubmissionSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
 
-export default mongoose.models.User || mongoose.model('ProjectSubmission', ProjectSubmissionSchema);
+// Prevent Mongoose model compilation error in Next.js hot reload
+if (mongoose.models.ProjectSubmission) {
+  delete mongoose.models.ProjectSubmission;
+}
+
+export default mongoose.model('ProjectSubmission', ProjectSubmissionSchema);
