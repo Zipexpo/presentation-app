@@ -18,14 +18,25 @@ export const authOptions = {
       },
       async authorize(credentials) {
         await connectToDB();
+        console.log('Login attempt:', credentials.email);
+
         const user = await User.findOne({ email: credentials.email });
 
-        if (!user || !user.emailVerified) {
+        if (!user) {
+          console.log('Login failed: User not found');
+          return null;
+        }
+
+        if (!user.emailVerified) {
+          console.log('Login failed: Email not verified');
           return null;
         }
 
         const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) return null;
+        if (!isValid) {
+          console.log('Login failed: Invalid password');
+          return null;
+        }
 
         return {
           id: user._id,
