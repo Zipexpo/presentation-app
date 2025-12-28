@@ -101,7 +101,7 @@ export default function TeacherTopicsPage() {
     <div className="container mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-bold mb-4">My Topics</h1>
 
-      <section className="bg-white rounded-lg shadow p-4 space-y-4">
+      <section className="glass-card p-6 space-y-4">
         <h2 className="text-lg font-semibold">Create New Topic</h2>
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -229,7 +229,7 @@ export default function TeacherTopicsPage() {
         </form>
       </section>
 
-      <section className="bg-white rounded-lg shadow p-4">
+      <section className="glass-card p-6">
         <h2 className="text-lg font-semibold mb-3">Existing Topics</h2>
         {loading ? (
           <p>Loading topics...</p>

@@ -37,6 +37,7 @@
     "nodemailer": "^6.10.1",
     "papaparse": "^5.5.3",
     "pdfjs-dist": "^4.10.38",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.57.0",

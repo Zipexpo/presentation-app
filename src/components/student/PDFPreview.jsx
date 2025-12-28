@@ -5,14 +5,16 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Configure worker to load from CDN to avoid build issues
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-export default function PDFPreview({ url }) {
+export default function PDFPreview({ url, className }) {
     const [numPages, setNumPages] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [useFallback, setUseFallback] = useState(false);
 
     // Use proxy for external URLs to avoid CORS issues
     const pdfUrl = url.startsWith('http') ? `/api/utils/proxy-pdf?url=${encodeURIComponent(url)}` : url;
@@ -23,15 +25,31 @@ export default function PDFPreview({ url }) {
     }
 
     function onDocumentLoadError(err) {
-        console.error('PDF Load Error:', err);
-        // If proxy fails, maybe try direct link (though likely will fail same way if CORS)?
-        // Or just show error.
-        setError(err.message);
+        console.warn('PDF Load Error, switching to fallback:', err);
+        setUseFallback(true);
         setLoading(false);
     }
 
+    if (useFallback) {
+        return (
+            <div className={cn("w-full h-full min-h-[500px] flex flex-col bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden relative", className)}>
+                <iframe
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+                    className="w-full h-full absolute inset-0 border-none"
+                    allowFullScreen
+                    onError={() => setError('Fallback failed')}
+                />
+                <div className="absolute bottom-2 right-2 z-10">
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="bg-white/90 text-xs px-2 py-1 rounded shadow text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        Open Original <Loader2 className="w-3 h-3 opacity-0" /> {/* Spacer */}
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="relative min-h-[300px] max-h-[80vh] overflow-auto flex flex-col items-center bg-gray-100 dark:bg-gray-900 p-4 rounded-lg">
+        <div className={cn("relative min-h-[300px] flex flex-col items-center bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-auto", className)}>
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/50">
                     <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />

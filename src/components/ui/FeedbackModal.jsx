@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Check, Info, AlertTriangle } from 'lucide-react';
 
@@ -50,16 +50,33 @@ export default function FeedbackModal({ isOpen, onClose, type = 'error', title, 
                     {/* Design interpretation: The image shows a large circle clipping the top left or just a large icon. 
                         Let's go with a centered clean modern look first: Big animated icon. 
                     */}
-                    <div className={`w-full h-32 ${style.bgColor} flex items-center justify-center`}>
-                        <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm">
+                    <div className={`w-full h-32 ${style.bgColor} flex items-center justify-center overflow-visible relative`}>
+                        {/* 
+                            We try to load the 3D character image. 
+                            If it fails (not generated yet), we fall back to the icon.
+                        */}
+                        <img
+                            src={`/characters/feedback_${type}.png`}
+                            alt={`${type} character`}
+                            className="w-32 h-32 object-contain animate-float drop-shadow-2xl absolute -bottom-6 z-10 transition-opacity duration-300"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextSibling.style.display = 'flex';
+                            }}
+                        />
+                        <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm animate-float hidden">
                             <Icon className={`w-16 h-16 ${style.iconColor}`} strokeWidth={3} />
                         </div>
+                        {/* Fallback rendering logic: The img onError hides itself and shows the sibling div. 
+                             But initially we need the div to be hidden if we assume image exists, 
+                             OR we can use state. State is cleaner. Let's use state.
+                         */}
                     </div>
 
                     <div className="p-6 w-full">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                        <DialogTitle className="text-2xl font-bold text-gray-800 mb-2">
                             {title || style.defaultTitle}
-                        </h2>
+                        </DialogTitle>
                         <p className="text-gray-500 mb-6 leading-relaxed">
                             {message}
                         </p>

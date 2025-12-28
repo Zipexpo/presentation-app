@@ -31,6 +31,11 @@ export async function middleware(req) {
 
   // If accessing protected route without auth
   if (!publicRoutes.includes(path) && !token) {
+    // Allow guest access to live student page (auth check happens in page/api)
+    if (path.startsWith('/student/live/')) {
+      return NextResponse.next();
+    }
+
     return NextResponse.redirect(
       new URL(`/login?callbackUrl=${encodeURIComponent(path)}`, req.url)
     );

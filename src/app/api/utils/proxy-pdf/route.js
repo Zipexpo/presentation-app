@@ -9,23 +9,28 @@ export async function GET(request) {
     }
 
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
 
         if (!response.ok) {
+            console.error(`PDF Proxy Upstream Error: ${response.status} ${response.statusText} for ${url}`);
             return new NextResponse(`Failed to fetch PDF: ${response.statusText}`, { status: response.status });
         }
 
         const contentType = response.headers.get('content-type');
-        const blob = await response.blob();
+        const buffer = await response.arrayBuffer();
 
-        return new NextResponse(blob, {
+        return new NextResponse(buffer, {
             headers: {
                 'Content-Type': contentType || 'application/pdf',
                 'Cache-Control': 'public, max-age=3600',
             },
         });
     } catch (error) {
-        console.error('PDF Proxy Error:', error);
-        return new NextResponse('Internal Server Error', { status: 500 });
+        console.error('PDF Proxy Internal Error:', error);
+        return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
     }
 }

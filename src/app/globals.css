@@ -30,6 +30,7 @@
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -62,7 +63,42 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    background: radial-gradient(circle at 0% 0%, #e0f2fe 0%, #cae8ff 50%, #e0e7ff 100%);
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/40 backdrop-blur-md border border-white/50 shadow-lg;
+  }
+
+  .glass-card {
+    @apply bg-white/60 backdrop-blur-xl border border-white/60 shadow-md rounded-2xl;
+  }
+
+  .glass-sidebar {
+    @apply bg-white/30 backdrop-blur-xl border-r border-white/40;
+  }
+
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+
+    100% {
+      transform: translateY(0px);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
   }
 }

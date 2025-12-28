@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import FeedbackModal from '@/components/ui/FeedbackModal';
+import { getEmbedUrl, getLinkType } from '@/lib/utils';
 
 const PDFPreview = dynamic(() => import('./PDFPreview'), { ssr: false });
 
@@ -12,177 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
+import LinkBadge from '@/components/ui/LinkBadge';
 import MemberSearchDialog from './MemberSearchDialog';
-
-const getEmbedUrl = (input) => {
-    if (!input) return '';
-
-    let url = input;
-
-    // Handle iframe HTML snippets - extract src
-    if (input.trim().startsWith('<')) {
-        const srcMatch = input.match(/src="([^"]+)"/);
-        if (srcMatch && srcMatch[1]) {
-            url = srcMatch[1];
-        }
-    }
-
-    try {
-        const urlObj = new URL(url);
-
-        // Google Slides
-        if (urlObj.hostname.includes('docs.google.com') && urlObj.pathname.includes('/presentation/')) {
-            return url.replace(/\/edit.*$/, '/embed?start=false&loop=false&delayms=3000');
-        }
-
-        // Canva
-        if (urlObj.hostname.includes('canva.com') && urlObj.pathname.includes('/view')) {
-            // User requested to strip everything after /view and force ?embed
-            return url.replace(/\/view.*$/, '/view?embed');
-        }
-
-        // Figma
-        if (urlObj.hostname.includes('figma.com') && (urlObj.pathname.includes('/proto/') || urlObj.pathname.includes('/design/'))) {
-            return `https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent(url)}`;
-        }
-
-        // Microsoft PowerPoint / OneDrive
-        if (urlObj.hostname.includes('onedrive.live.com') || urlObj.hostname.includes('powerpoint.office.com') || urlObj.hostname.includes('sharepoint.com')) {
-            if (urlObj.searchParams.get('action') !== 'embedview') {
-                if (url.includes('?')) return `${url}&action=embedview`;
-                return `${url}?action=embedview`;
-            }
-        }
-
-        // Prezi
-        if (urlObj.hostname.includes('prezi.com') && urlObj.pathname.includes('/p/')) {
-            if (!url.includes('/embed')) return `${url.split('?')[0]}/embed`;
-        }
-
-        // Pitch
-        if (urlObj.hostname.includes('pitch.com')) {
-            if (!url.includes('/embed')) return url.replace('pitch.com/', 'pitch.com/embed/');
-        }
-
-        // YouTube
-        if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
-            let videoId = '';
-            if (urlObj.hostname.includes('youtu.be')) {
-                videoId = urlObj.pathname.slice(1);
-            } else if (urlObj.searchParams.get('v')) {
-                videoId = urlObj.searchParams.get('v');
-            }
-            if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-        }
-
-        // Vimeo
-        if (urlObj.hostname.includes('vimeo.com')) {
-            const videoId = urlObj.pathname.split('/').pop();
-            if (videoId && !isNaN(videoId)) {
-                return `https://player.vimeo.com/video/${videoId}`;
-            }
-        }
-
-        return url;
-    } catch (e) {
-        return url;
-    }
-};
-
-const getLinkType = (url) => {
-    if (!url) return null;
-    try {
-        const hostname = new URL(url).hostname;
-        // Prioritize specific types
-        if (hostname.includes('docs.google.com') && hostname.includes('/presentation/')) return 'Google Slides';
-        if (hostname.includes('drive.google.com') || hostname.includes('docs.google.com')) return 'Google Drive'; // Fallback for other google docs
-
-        if (hostname.includes('canva.com')) return 'Canva';
-        if (hostname.includes('figma.com')) return 'Figma';
-
-        // Microsoft
-        if (hostname.includes('powerpoint.office.com')) return 'PowerPoint';
-        if (hostname.includes('onedrive.live.com') || hostname.includes('sharepoint.com')) return 'OneDrive';
-
-        if (hostname.includes('prezi.com')) return 'Prezi';
-        if (hostname.includes('pitch.com')) return 'Pitch';
-        if (hostname.includes('youtube') || hostname.includes('youtu.be')) return 'YouTube';
-        if (hostname.includes('vimeo.com')) return 'Vimeo';
-
-        if (hostname.includes('github.com')) return 'GitHub';
-        if (hostname.includes('gitlab.com')) return 'GitLab';
-
-        return 'Link';
-    } catch { return 'Link'; }
-};
-
-const LinkBadge = ({ url }) => {
-    const type = getLinkType(url);
-    if (!type) return null;
-
-    let icon = <LinkIcon className="w-3 h-3" />;
-    let colorClass = "bg-gray-100 text-gray-800 border-gray-200"; // Default
-
-    switch (type) {
-        case 'Google Slides':
-            icon = <img src="/logo%20icon/google_slides.svg" alt="Google Slides" className="w-3 h-3" />;
-            colorClass = "bg-orange-100 text-orange-800 border-orange-200";
-            break;
-        case 'Canva':
-            icon = <img src="/logo%20icon/canva.svg" alt="Canva" className="w-3 h-3" />;
-            colorClass = "bg-blue-100 text-blue-800 border-blue-200";
-            break;
-        case 'Figma':
-            icon = <img src="/logo%20icon/figma.svg" alt="Figma" className="w-3 h-3" />;
-            colorClass = "bg-purple-100 text-purple-800 border-purple-200";
-            break;
-        case 'PowerPoint':
-            icon = <img src="/logo%20icon/powerpoint.svg" alt="PowerPoint" className="w-3 h-3" />;
-            colorClass = "bg-red-100 text-red-800 border-red-200";
-            break;
-        case 'YouTube':
-            icon = <img src="/logo%20icon/youtube.svg" alt="YouTube" className="w-3 h-3" />;
-            colorClass = "bg-red-50 text-red-600 border-red-200";
-            break;
-        case 'Vimeo':
-            icon = <img src="/logo%20icon/vimeo.svg" alt="Vimeo" className="w-3 h-3" />;
-            colorClass = "bg-sky-100 text-sky-800 border-sky-200";
-            break;
-        case 'Google Drive':
-            icon = <img src="/logo%20icon/google_drive.svg" alt="Drive" className="w-3 h-3" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }} />;
-            // Fallback if image fails (using Lucide HardDrive would require import, let's just stick to reliable generic or try-catch logic? React onError)
-            // Actually, simpler: Use distinct colors.
-            colorClass = "bg-green-100 text-green-800 border-green-200";
-            break;
-        case 'OneDrive':
-            icon = <img src="/logo%20icon/onedrive.svg" alt="OneDrive" className="w-3 h-3" />;
-            colorClass = "bg-blue-100 text-blue-800 border-blue-200";
-            break;
-        case 'GitHub':
-            icon = <img src="/logo%20icon/github.svg" alt="GitHub" className="w-3 h-3" />;
-            colorClass = "bg-gray-100 text-gray-900 border-gray-200";
-            break;
-        case 'GitLab':
-            icon = <img src="/logo%20icon/gitlab.svg" alt="GitLab" className="w-3 h-3" />;
-            colorClass = "bg-orange-100 text-orange-800 border-orange-200";
-            break;
-        case 'Prezi':
-            icon = <img src="/logo%20icon/prezi.svg" alt="Prezi" className="w-3 h-3" />;
-            colorClass = "bg-indigo-100 text-indigo-800 border-indigo-200";
-            break;
-        case 'Pitch':
-            icon = <img src="/logo%20icon/pitch.svg" alt="Pitch" className="w-3 h-3" />;
-            colorClass = "bg-indigo-100 text-indigo-800 border-indigo-200";
-            break;
-    }
-
-    return (
-        <Badge variant="outline" className={`ml-2 gap-1.5 px-2 py-0.5 h-6 font-normal ${colorClass}`}>
-            {icon}
-            {type}
-        </Badge>
-    );
-};
 
 export default function TopicSubmissionForm({ topicId, topicConfig, existingSubmission }) {
     const { data: session } = useSession();
@@ -680,7 +512,12 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                         <div className="space-y-4 max-w-xl">
                             {/* Presentation */}
                             <div>
-                                <Label htmlFor="presentationLink" className="mb-1.5 block text-gray-600">Presentation Slides</Label>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <Label htmlFor="presentationLink" className="block text-gray-600">Presentation Slides</Label>
+                                    <div className="flex items-center gap-2">
+                                        {form.presentationLink && getLinkType(form.presentationLink) && <LinkBadge type={getLinkType(form.presentationLink)} />}
+                                    </div>
+                                </div>
                                 <div className="flex gap-2 items-center">
                                     <div className="relative flex-1">
                                         <Input
@@ -717,14 +554,17 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                         </Dialog>
                                     )}
                                 </div>
-                                <div className="mt-1 h-6">
-                                    {form.presentationLink && getLinkType(form.presentationLink) && <LinkBadge type={getLinkType(form.presentationLink)} />}
-                                </div>
                             </div>
 
                             {/* Video */}
                             <div>
-                                <Label htmlFor="videoLink" className="mb-1.5 block text-gray-600">Demo Video</Label>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <Label htmlFor="videoLink" className="block text-gray-600">Demo Video</Label>
+                                    <div className="flex items-center gap-2">
+                                        {form.videoLink && getLinkType(form.videoLink) && <LinkBadge type={getLinkType(form.videoLink)} />}
+                                        {videoTitle && <span className="text-xs text-gray-500 truncate max-w-[200px] bg-gray-100 px-1.5 py-0.5 rounded">{videoTitle}</span>}
+                                    </div>
+                                </div>
                                 <div className="flex gap-2 items-center">
                                     <div className="relative flex-1">
                                         <Input
@@ -753,16 +593,19 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                         </Dialog>
                                     )}
                                 </div>
-                                <div className="mt-1 h-6 flex items-center gap-2">
-                                    {form.videoLink && getLinkType(form.videoLink) && <LinkBadge type={getLinkType(form.videoLink)} />}
-                                    {videoTitle && <span className="text-xs text-gray-500 truncate max-w-[200px]">{videoTitle}</span>}
-                                </div>
                             </div>
 
                             {/* Source Code */}
                             {config.includeSourceCode && (
                                 <div className="space-y-2">
-                                    <Label htmlFor="sourceCodeLink">Source Code (GitHub/GitLab)</Label>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <Label htmlFor="sourceCodeLink">Source Code (GitHub/GitLab)</Label>
+                                        <div className="flex items-center gap-2">
+                                            {form.sourceCodeLink && getLinkType(form.sourceCodeLink) && (
+                                                <LinkBadge type={getLinkType(form.sourceCodeLink)} />
+                                            )}
+                                        </div>
+                                    </div>
                                     <div className="flex gap-2 items-center">
                                         <div className="relative flex-1">
                                             <Input
@@ -785,20 +628,34 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                             </Button>
                                         )}
                                     </div>
-                                    <div className="mt-1 h-6">
-                                        {form.sourceCodeLink && getLinkType(form.sourceCodeLink) && (
-                                            <LinkBadge type={getLinkType(form.sourceCodeLink)} />
-                                        )}
-                                    </div>
                                 </div>
                             )}
 
                             {/* Dynamic Resource Inputs */}
                             {topicConfig?.resourceRequirements?.map((req, idx) => {
                                 const resourceValue = form.resources.find(r => r.label === req.label)?.url || '';
+
+                                // Helper to extract filename
+                                const getFilename = (url) => {
+                                    if (!url) return null;
+                                    try {
+                                        const urlObj = new URL(url);
+                                        const pathname = urlObj.pathname;
+                                        const name = pathname.split('/').pop();
+                                        return name.length > 20 ? name.substring(0, 20) + '...' : name;
+                                    } catch { return null; }
+                                };
+                                const filename = getFilename(resourceValue);
+
                                 return (
                                     <div key={idx} className="space-y-2">
-                                        <Label>{req.label} {req.type !== 'url' && <span className="text-xs text-gray-400">({req.type})</span>}</Label>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <Label>{req.label} {req.type !== 'url' && <span className="text-xs text-gray-400">({req.type})</span>}</Label>
+                                            <div className="flex items-center gap-2">
+                                                {resourceValue && getLinkType(resourceValue) && <LinkBadge type={getLinkType(resourceValue)} />}
+                                                {filename && <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[150px]" title={resourceValue}>{filename}</span>}
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-2">
                                             <div className="relative flex-1">
                                                 <Input
@@ -875,6 +732,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                             )}
                                         </div>
                                     </div>
+
                                 );
                             })}
                         </div>

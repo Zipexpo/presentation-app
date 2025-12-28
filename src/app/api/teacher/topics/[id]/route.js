@@ -85,22 +85,25 @@ export async function PUT(request, { params }) {
 
   const { id } = await params;
   const body = await request.json();
-  const { title, description, submissionDeadline, presentationDate, submissionConfig, resourceRequirements, classId } = body;
+  const { title, description, submissionDeadline, presentationDate, submissionConfig, resourceRequirements, classId, presentationConfig } = body;
 
   await connectToDB();
 
+  // Construct update object to avoid overwriting with undefined or crashing on invalid dates
+  const updateData = { updatedAt: new Date() };
+
+  if (title !== undefined) updateData.title = title;
+  if (description !== undefined) updateData.description = description;
+  if (submissionDeadline) updateData.submissionDeadline = new Date(submissionDeadline);
+  if (presentationDate) updateData.presentationDate = new Date(presentationDate);
+  if (submissionConfig) updateData.submissionConfig = submissionConfig;
+  if (resourceRequirements) updateData.resourceRequirements = resourceRequirements;
+  if (presentationConfig) updateData.presentationConfig = presentationConfig;
+  if (classId !== undefined) updateData.classId = classId;
+
   const topic = await Topic.findOneAndUpdate(
     { _id: id, teacherId: session.user.id },
-    {
-      title,
-      description,
-      submissionDeadline: new Date(submissionDeadline),
-      presentationDate: new Date(presentationDate),
-      submissionConfig,
-      resourceRequirements,
-      classId: classId || undefined, // Added classId update
-      updatedAt: new Date()
-    },
+    updateData,
     { new: true }
   );
 
