@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Star, MessageSquare, Check, RefreshCw, Loader2, Video, FileText, Code, ExternalLink, X, Maximize2, Link as LinkIcon, Pencil, Trash2 } from 'lucide-react'
+import { Star, MessageSquare, Check, RefreshCw, Loader2, Video, FileText, Code, ExternalLink, X, Maximize2, Link as LinkIcon, Pencil, Trash2, Pause } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import StudentTimer from '@/components/student/StudentTimer'
 import { getEmbedUrl, isEmbeddable } from '@/lib/utils'
@@ -28,6 +28,7 @@ export default function StudentLivePage() {
     // Form State
     const [scores, setScores] = useState({}) // { [label]: number }
     const [comment, setComment] = useState('')
+    const [feedbackType, setFeedbackType] = useState('comment')
 
     // Reviews State
     const [myReviews, setMyReviews] = useState([])
@@ -188,7 +189,8 @@ export default function StudentLivePage() {
                     projectId: liveState.currentProject._id,
                     comment,
                     guestId: status === 'unauthenticated' ? guestId : undefined,
-                    reviewerName: status === 'unauthenticated' ? guestName : undefined
+                    reviewerName: status === 'unauthenticated' ? guestName : undefined,
+                    feedbackType
                 })
             });
 
@@ -249,6 +251,21 @@ export default function StudentLivePage() {
                     <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
                     <h2 className="text-xl font-bold text-slate-800 mb-2">Waiting for Presentation</h2>
                     <p className="text-slate-500">The teacher hasn't started a project yet. Sit tight!</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Paused State
+    if (liveState?.session?.status === 'paused') {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+                <div className="glass-card p-8 max-w-md w-full border-yellow-200 bg-yellow-50/50">
+                    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Pause className="w-8 h-8 text-yellow-600 fill-yellow-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">Presentation Paused</h2>
+                    <p className="text-slate-500">The presenter has paused the session.<br />Hang tight, we'll be back shortly!</p>
                 </div>
             </div>
         );
@@ -552,16 +569,31 @@ export default function StudentLivePage() {
                         {/* 2. COMMENT / QUESTION SECTION */}
                         {(config?.allowComments !== false) && (
                             <div className="glass-card p-6 border-t-4 border-t-purple-500 shadow-md">
-                                <Label className="flex items-center gap-2 text-base font-bold text-slate-800 mb-4">
-                                    <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><MessageSquare className="w-4 h-4" /></div>
-                                    Questions & Comments
-                                </Label>
-                                <div className="bg-purple-50/50 p-3 rounded-lg text-xs text-purple-700 mb-3 border border-purple-100">
-                                    Have a question for the presenter? Type it here and send it separately.
+                                <div className="flex items-center justify-between mb-4">
+                                    <Label className="flex items-center gap-2 text-base font-bold text-slate-800">
+                                        <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><MessageSquare className="w-4 h-4" /></div>
+                                        Feedback
+                                    </Label>
+                                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                                        <button
+                                            type="button"
+                                            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${feedbackType === 'comment' ? 'bg-white shadow text-purple-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                            onClick={() => setFeedbackType('comment')}
+                                        >
+                                            Comment
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${feedbackType === 'question' ? 'bg-white shadow text-amber-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                            onClick={() => setFeedbackType('question')}
+                                        >
+                                            Question
+                                        </button>
+                                    </div>
                                 </div>
                                 <textarea
                                     className="w-full p-4 rounded-xl border border-slate-200 bg-white/80 text-slate-800 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition min-h-[100px] placeholder:text-slate-400 shadow-sm mb-4"
-                                    placeholder="Ask a question or share feedback..."
+                                    placeholder={feedbackType === 'question' ? "What's your question for the team?" : "Share your thoughts or feedback..."}
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
                                 />
@@ -600,7 +632,14 @@ export default function StudentLivePage() {
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <div className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">{r.comment}</div>
+                                                            <div className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">
+                                                                {r.feedbackType === 'question' && (
+                                                                    <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 align-middle border border-amber-200">
+                                                                        QUESTION
+                                                                    </span>
+                                                                )}
+                                                                {r.comment}
+                                                            </div>
                                                             <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-100/50">
                                                                 <span className="text-[10px] text-slate-400 font-medium">
                                                                     {new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

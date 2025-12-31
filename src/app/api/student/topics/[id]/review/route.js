@@ -11,7 +11,7 @@ export async function POST(request, { params }) {
     // 1. Validate Input
     const { id } = await params; // Topic ID
     const requestJson = await request.json();
-    const { projectId, scores, comment, guestId, reviewerName: bodyReviewerName } = requestJson;
+    const { projectId, scores, comment, guestId, reviewerName: bodyReviewerName, feedbackType } = requestJson;
 
     if (!projectId || (!scores && comment === undefined)) {
         return NextResponse.json({ error: 'Missing Data' }, { status: 400 });
@@ -81,6 +81,7 @@ export async function POST(request, { params }) {
                 reviewerName,
                 userType,
                 comment,
+                feedbackType: feedbackType || 'comment',
                 createdAt: new Date(),
                 updatedAt: new Date()
             });
@@ -174,7 +175,7 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
     const session = await getServerSession(authOptions);
     const { id } = await params;
-    const { reviewId, comment, guestId } = await request.json();
+    const { reviewId, comment, guestId, feedbackType } = await request.json();
 
     await connectToDB();
 
@@ -195,7 +196,7 @@ export async function PUT(request, { params }) {
 
     const result = await PeerReview.findOneAndUpdate(
         query,
-        { $set: { comment, updatedAt: new Date() } },
+        { $set: { comment, feedbackType: feedbackType || 'comment', updatedAt: new Date() } },
         { new: true }
     );
 

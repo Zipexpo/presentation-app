@@ -12,6 +12,7 @@ const peerReviewSchema = new mongoose.Schema({
         textValue: String
     }],
     userType: { type: String, enum: ['student', 'teacher', 'guest'], default: 'student' },
+    feedbackType: { type: String, enum: ['comment', 'question'], default: 'comment' },
     comment: String,
     createdAt: { type: Date, default: Date.now }
 });

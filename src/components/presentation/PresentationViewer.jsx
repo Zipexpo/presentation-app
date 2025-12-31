@@ -24,7 +24,7 @@ const PresentationViewer = memo(function PresentationViewer({
     // If no active resource, show placeholders
     if (!currentProject || !activeResource) {
         return (
-            <div className="flex-1 bg-black relative flex flex-col justify-center items-center">
+            <div className="w-full h-full bg-black relative flex flex-col justify-center items-center">
                 {showUpcoming && nextProject && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-indigo-600/90 text-white px-6 py-2 rounded-full shadow-lg backdrop-blur animate-pulse z-20 pointer-events-none">
                         Up Next: Group {nextProject.groupNumber} - {nextProject.projectName}
@@ -52,7 +52,7 @@ const PresentationViewer = memo(function PresentationViewer({
     }
 
     return (
-        <div className="flex-1 bg-black relative flex flex-col justify-center items-center">
+        <div className="w-full h-full bg-black relative flex flex-col justify-center items-center">
             {/* "Upcoming" Overlay */}
             {showUpcoming && nextProject && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-indigo-600/90 text-white px-6 py-2 rounded-full shadow-lg backdrop-blur animate-pulse z-20 pointer-events-none">

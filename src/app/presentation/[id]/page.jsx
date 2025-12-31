@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, ExternalLink, PanelRightClose, PanelRightOpen, Maximize2, Minimize2, Settings, Check } from 'lucide-react'
+import { Allotment } from 'allotment'
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { useSession } from 'next-auth/react'
 
 import PresentationTimer from '@/components/presentation/PresentationTimer'
@@ -31,6 +33,16 @@ export default function PresentationPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [activeResource, setActiveResource] = useState(null)
     const [isCopied, setIsCopied] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile(); // Initial check
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // ... (Existing useEffects) ...
 
@@ -262,7 +274,7 @@ export default function PresentationPage() {
     const nextProject = projects[currentIndex + 1];
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white flex flex-col overflow-hidden">
+        <div className="h-screen bg-slate-900 text-white flex flex-col overflow-hidden">
             {/* Top Bar */}
             <div className="h-14 flex items-center justify-between px-6 bg-slate-800/50 backdrop-blur border-b border-slate-700/50 shrink-0">
                 <div className="flex items-center gap-4">
@@ -314,32 +326,72 @@ export default function PresentationPage() {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
-                {/* Main Viewer */}
-                <PresentationViewer
-                    currentProject={currentProject}
-                    activeResource={activeResource}
-                    showUpcoming={showUpcoming}
-                    nextProject={nextProject}
-                    isFullscreen={isFullscreen}
-                    toggleFullscreen={toggleFullscreen}
-                    isSidebarOpen={isSidebarOpen}
-                    setIsSidebarOpen={setIsSidebarOpen}
-                />
+            <div className="flex-1 w-full overflow-hidden">
+                {isMobile ? (
+                    <>
+                        <div className="w-full h-full overflow-hidden flex flex-col">
+                            <PresentationViewer
+                                currentProject={currentProject}
+                                activeResource={activeResource}
+                                showUpcoming={showUpcoming}
+                                nextProject={nextProject}
+                                isFullscreen={isFullscreen}
+                                toggleFullscreen={toggleFullscreen}
+                                isSidebarOpen={isSidebarOpen}
+                                setIsSidebarOpen={setIsSidebarOpen}
+                            />
+                        </div>
+                        <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                            <SheetContent side="right" className="w-[85vw] p-0 border-l border-slate-700 bg-slate-900 border-none sm:max-w-md gap-0">
+                                <SheetTitle className="sr-only">Sidebar</SheetTitle>
+                                <PresentationSidebar
+                                    isSidebarOpen={true}
+                                    topic={topic}
+                                    currentProject={currentProject}
+                                    activeResource={activeResource}
+                                    projects={projects}
+                                    reviews={reviews}
+                                    onDeleteReview={handleDeleteReview}
+                                    handleControl={handleControl}
+                                    handleJump={handleJump}
+                                    handleSwitchResource={handleSwitchResource}
+                                />
+                            </SheetContent>
+                        </Sheet>
+                    </>
+                ) : (
+                    <Allotment>
+                        <Allotment.Pane minSize={400} priority>
+                            <PresentationViewer
+                                currentProject={currentProject}
+                                activeResource={activeResource}
+                                showUpcoming={showUpcoming}
+                                nextProject={nextProject}
+                                isFullscreen={isFullscreen}
+                                toggleFullscreen={toggleFullscreen}
+                                isSidebarOpen={isSidebarOpen}
+                                setIsSidebarOpen={setIsSidebarOpen}
+                            />
+                        </Allotment.Pane>
 
-                {/* Sidebar */}
-                <PresentationSidebar
-                    isSidebarOpen={isSidebarOpen}
-                    topic={topic}
-                    currentProject={currentProject}
-                    activeResource={activeResource}
-                    projects={projects}
-                    reviews={reviews} // [NEW]
-                    onDeleteReview={handleDeleteReview} // [NEW]
-                    handleControl={handleControl}
-                    handleJump={handleJump}
-                    handleSwitchResource={handleSwitchResource}
-                />
+                        {isSidebarOpen && (
+                            <Allotment.Pane preferredSize={384} minSize={300} maxSize={600}>
+                                <PresentationSidebar
+                                    isSidebarOpen={isSidebarOpen}
+                                    topic={topic}
+                                    currentProject={currentProject}
+                                    activeResource={activeResource}
+                                    projects={projects}
+                                    reviews={reviews}
+                                    onDeleteReview={handleDeleteReview}
+                                    handleControl={handleControl}
+                                    handleJump={handleJump}
+                                    handleSwitchResource={handleSwitchResource}
+                                />
+                            </Allotment.Pane>
+                        )}
+                    </Allotment>
+                )}
             </div>
 
             <PresentationSettingsDialog

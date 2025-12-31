@@ -2,11 +2,13 @@
 
 import { memo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, SkipForward, FastForward, Video, FileText, Code, Folder, Link as LinkIcon, ExternalLink, ListMusic, QrCode, Trash2 } from 'lucide-react';
+import { Play, Pause, SkipForward, FastForward, Video, FileText, Code, Folder, Link as LinkIcon, ExternalLink, ListMusic, QrCode, Trash2, ChevronDown, ChevronRight, GripHorizontal } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { QRCodeCanvas } from 'qrcode.react';
 import { isEmbeddable } from '@/lib/utils';
+import { Allotment } from "allotment";
 import ResourceLinkItem from './ResourceLinkItem';
+import ScoreBeeswarmViz from './ScoreBeeswarmViz';
 
 const PresentationSidebar = memo(function PresentationSidebar({
     isSidebarOpen,
@@ -21,11 +23,18 @@ const PresentationSidebar = memo(function PresentationSidebar({
     onDeleteReview
 }) {
     const [showQR, setShowQR] = useState(false);
+    const [isMaterialsOpen, setIsMaterialsOpen] = useState(true);
+    const [isPlaylistOpen, setIsPlaylistOpen] = useState(true);
+    const [filterType, setFilterType] = useState('all');
     const liveLink = typeof window !== 'undefined' ? `${window.location.origin}/student/live/${topic._id}` : '';
 
+    const projectReviews = reviews.filter(r => String(r.projectId) === String(currentProject?._id));
+    const filteredReviews = projectReviews.filter(r => filterType === 'all' || r.feedbackType === filterType);
+    const reviewCount = projectReviews.length;
+
     return (
-        <div className={`${isSidebarOpen ? 'w-96' : 'w-0'} transition-all duration-300 bg-slate-900 border-l border-slate-700/50 flex flex-col overflow-hidden`}>
-            {/* Controls */}
+        <div className="w-full h-full bg-slate-900 border-l border-slate-700/50 flex flex-col overflow-hidden">
+            {/* Controls (Fixed Top) */}
             <div className="p-6 border-b border-slate-700/50 bg-slate-800/30 shrink-0">
                 <div className="flex justify-center gap-4 items-center">
                     {topic.activeSession?.status === 'active' ? (
@@ -37,8 +46,6 @@ const PresentationSidebar = memo(function PresentationSidebar({
                             <Play className="w-8 h-8 fill-current ml-1" />
                         </Button>
                     )}
-
-
 
                     {/* Phase Controls */}
                     <div className="flex flex-col items-center gap-1">
@@ -76,7 +83,7 @@ const PresentationSidebar = memo(function PresentationSidebar({
                         </span>
                     </div>
 
-                    {/* Next Project Button (Skip) */}
+                    {/* Next Project (Skip) */}
                     <div className="flex flex-col items-center gap-1">
                         <Button size="lg" variant="outline" className="h-16 w-16 rounded-full border-slate-700 text-slate-500 hover:text-white hover:bg-white/10" onClick={() => handleControl('next')}>
                             <SkipForward className="w-8 h-8" />
@@ -88,187 +95,194 @@ const PresentationSidebar = memo(function PresentationSidebar({
                 </div>
             </div>
 
-            {/* Playlist (Queue) */}
-            <div className="flex-1 overflow-y-auto min-h-0 border-b border-slate-700/50">
-                <div className="sticky top-0 bg-slate-900/90 backdrop-blur p-3 border-b border-slate-700/50 flex items-center gap-2 z-10">
-                    <ListMusic className="w-4 h-4 text-slate-400" />
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Presentation Playlist</h3>
-                </div>
-                <div className="divide-y divide-slate-800">
-                    {projects.map((p, i) => (
-                        <div
-                            key={p._id}
-                            className={`p-3 flex items-center justify-between hover:bg-slate-800/50 transition cursor-pointer group ${currentProject?._id === p._id ? 'bg-blue-500/10 border-l-2 border-blue-500' : 'border-l-2 border-transparent'}`}
-                            onClick={() => handleJump(p)}
-                        >
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${currentProject?._id === p._id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                                        {p.groupNumber}
-                                    </span>
-                                    <span className={`text-sm truncate font-medium ${currentProject?._id === p._id ? 'text-blue-300' : 'text-slate-300'}`}>
-                                        {p.projectName}
-                                    </span>
+            {/* Resizable Main Content */}
+            <div className="flex-1 min-h-0 w-full relative">
+                <Allotment vertical>
+                    {/* Panel 1: Playlist */}
+                    <Allotment.Pane
+                        minSize={isPlaylistOpen ? 100 : 49}
+                        preferredSize={isPlaylistOpen ? "40%" : 49}
+                        maxSize={isPlaylistOpen ? Number.MAX_SAFE_INTEGER : 49}
+                    >
+                        <div className="h-full flex flex-col bg-slate-900">
+                            {/* Playlist Header */}
+                            <div
+                                className="sticky top-0 bg-slate-900/90 backdrop-blur p-3 border-b border-slate-700/50 flex items-center justify-between z-10 cursor-pointer hover:bg-slate-800/50 transition-colors"
+                                onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <ListMusic className="w-4 h-4 text-slate-400" />
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Playlist</h3>
                                 </div>
-                                <div className="text-xs text-slate-500 truncate pl-8">
-                                    {p.members?.map(m => m.name).join(', ')}
-                                </div>
+                                {isPlaylistOpen ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
                             </div>
 
-                            {/* Play Icon on Hover/Active */}
-                            {currentProject?._id === p._id && topic.activeSession?.status === 'active' ? (
-                                <div className="w-8 h-8 flex items-center justify-center">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                            {/* Scrollable Playlist */}
+                            {isPlaylistOpen && (
+                                <div className="flex-1 overflow-y-auto divide-y divide-slate-800">
+                                    {projects.map((p, i) => (
+                                        <div
+                                            key={p._id}
+                                            className={`p-3 flex items-center justify-between hover:bg-slate-800/50 transition cursor-pointer group ${currentProject?._id === p._id ? 'bg-blue-500/10 border-l-2 border-blue-500' : 'border-l-2 border-transparent'}`}
+                                            onClick={() => handleJump(p)}
+                                        >
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${currentProject?._id === p._id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                                        {p.groupNumber}
+                                                    </span>
+                                                    <span className={`text-sm truncate font-medium ${currentProject?._id === p._id ? 'text-blue-300' : 'text-slate-300'}`}>
+                                                        {p.projectName}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-slate-500 truncate pl-8">
+                                                    {p.members?.map(m => m.name).join(', ')}
+                                                </div>
+                                            </div>
+
+                                            {currentProject?._id === p._id && topic.activeSession?.status === 'active' ? (
+                                                <div className="w-8 h-8 flex items-center justify-center">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                                                </div>
+                                            ) : (
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white">
+                                                    <Play className="w-4 h-4 fill-current" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
-                            ) : (
-                                <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white">
-                                    <Play className="w-4 h-4 fill-current" />
-                                </Button>
                             )}
                         </div>
-                    ))}
-                </div>
-            </div>
+                    </Allotment.Pane>
 
-            {/* Material List Control */}
-            {currentProject && (
-                <div className="p-4 border-b border-slate-700/50 bg-slate-800/30 shrink-0">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-3 text-center tracking-wider">Project Materials</h3>
-                    <div className="space-y-2">
-                        {/* Video */}
-                        <ResourceLinkItem
-                            url={currentProject.videoLink}
-                            label="Video Submission"
-                            type="YouTube"
-                            active={activeResource?.url === currentProject.videoLink}
-                            onShow={() => handleSwitchResource('iframe', currentProject.videoLink)}
-                        />
-
-                        {/* Presentation */}
-                        <ResourceLinkItem
-                            url={currentProject.presentationLink}
-                            label="Presentation/Post"
-                            active={activeResource?.url === currentProject.presentationLink}
-                            onShow={() => handleSwitchResource('iframe', currentProject.presentationLink)}
-                        />
-
-                        {/* Source Code */}
-                        <ResourceLinkItem
-                            url={currentProject.sourceCodeLink}
-                            label="Source Code"
-                            active={activeResource?.url === currentProject.sourceCodeLink}
-                            onShow={() => handleSwitchResource('iframe', currentProject.sourceCodeLink)}
-                        />
-
-                        {/* Storage / Drive */}
-                        <ResourceLinkItem
-                            url={currentProject.storageLink}
-                            label="Project Files"
-                            active={activeResource?.url === currentProject.storageLink}
-                            onShow={() => handleSwitchResource('iframe', currentProject.storageLink)}
-                        />
-
-                        {/* Other Resources */}
-                        {currentProject.resources?.map((res, i) => (
-                            <ResourceLinkItem
-                                key={i}
-                                url={res.url}
-                                label={res.label || res.name || `Resource ${i + 1}`}
-                                type={res.type}
-                                active={activeResource?.url === res.url}
-                                onShow={() => handleSwitchResource('iframe', res.url)}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Live Feedback Stream */}
-            <div className="flex-1 p-4 overflow-y-auto min-h-0">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Live Feedback</h3>
-                    <Button variant="ghost" size="sm" className="h-6 text-slate-400 hover:text-white gap-1" onClick={() => setShowQR(true)}>
-                        <QrCode className="w-3 h-3" /> <span className="text-xs">Share</span>
-                    </Button>
-                </div>
-                <div className="space-y-3">
-                    {reviews.filter(r => String(r.projectId) === String(currentProject?._id) && r.comment).length === 0 ? (
-                        <div className="text-center py-10 text-slate-600 italic text-sm">
-                            Waiting for feedback...
-                        </div>
-                    ) : (
-                        reviews
-                            .filter(r => String(r.projectId) === String(currentProject?._id) && r.comment)
-                            .map((review, i) => {
-                                const userType = review.userType || 'student';
-                                const visibility = topic?.presentationConfig?.feedbackVisibility || { teacher: true, student: true, guest: true };
-                                const showName = visibility[userType] !== false;
-                                const displayName = showName ? (review.reviewerName || 'Anonymous') : 'Anonymous';
-
-                                return (
-                                    <div key={i} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 group relative">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className={`font-bold text-sm ${userType === 'teacher' ? 'text-purple-400' : 'text-slate-300'}`}>
-                                                {displayName} {showName && userType === 'teacher' && '(Teacher)'} {showName && userType === 'guest' && '(Guest)'}
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-slate-500">
-                                                    {new Date(review.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                                {onDeleteReview && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onDeleteReview(review._id);
-                                                        }}
-                                                        className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
-                                                        title="Delete Comment"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <p className="text-sm text-slate-400 mb-2">{review.comment}</p>
+                    {/* Panel 2: Materials & Live Feedback */}
+                    {/* Panel 2: Materials (Conditional) */}
+                    {currentProject && (
+                        <Allotment.Pane
+                            minSize={isMaterialsOpen ? 100 : 49}
+                            preferredSize={isMaterialsOpen ? "30%" : 49}
+                            maxSize={isMaterialsOpen ? Number.MAX_SAFE_INTEGER : 49}
+                        >
+                            <div className="h-full flex flex-col bg-slate-900">
+                                <div
+                                    className="p-3 shrink-0 flex items-center justify-between cursor-pointer hover:bg-slate-800/50 transition-colors border-b border-slate-700/50 bg-slate-900/90 backdrop-blur sticky top-0 z-10"
+                                    onClick={() => setIsMaterialsOpen(!isMaterialsOpen)}
+                                >
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Materials</h3>
+                                    {isMaterialsOpen ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
+                                </div>
+                                {isMaterialsOpen && (
+                                    <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-slate-800/20">
+                                        {currentProject.videoLink && (
+                                            <ResourceLinkItem url={currentProject.videoLink} label="Video" type="YouTube" active={activeResource?.url === currentProject.videoLink} onShow={() => handleSwitchResource('iframe', currentProject.videoLink)} />
+                                        )}
+                                        {currentProject.presentationLink && (
+                                            <ResourceLinkItem url={currentProject.presentationLink} label="Slides" active={activeResource?.url === currentProject.presentationLink} onShow={() => handleSwitchResource('iframe', currentProject.presentationLink)} />
+                                        )}
+                                        {currentProject.sourceCodeLink && (
+                                            <ResourceLinkItem url={currentProject.sourceCodeLink} label="Code" active={activeResource?.url === currentProject.sourceCodeLink} onShow={() => handleSwitchResource('iframe', currentProject.sourceCodeLink)} />
+                                        )}
+                                        {currentProject.resources?.map((res, i) => (
+                                            <ResourceLinkItem key={i} url={res.url} label={res.label || res.name} type={res.type} active={activeResource?.url === res.url} onShow={() => handleSwitchResource('iframe', res.url)} />
+                                        ))}
                                     </div>
-                                );
-                            })
+                                )}
+                            </div>
+                        </Allotment.Pane>
                     )}
-                </div>
-            </div>
 
-            {/* Stats */}
-            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50 shrink-0">
-                {(() => {
-                    const projectReviews = reviews.filter(r => String(r.projectId) === String(currentProject?._id));
-                    const count = projectReviews.length;
-
-                    // Simple average calculation across all score fields
-                    let totalScore = 0;
-                    let scoreCount = 0;
-                    projectReviews.forEach(r => {
-                        r.scores?.forEach(s => {
-                            if (typeof s.score === 'number' && s.score > 0) {
-                                totalScore += s.score;
-                                scoreCount++;
-                            }
-                        });
-                    });
-                    const avg = scoreCount > 0 ? (totalScore / scoreCount).toFixed(1) : '-';
-
-                    return (
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-slate-900/50 p-3 rounded-lg text-center">
-                                <div className="text-xs text-slate-500 uppercase">Avg Score</div>
-                                <div className="text-2xl font-bold text-blue-400">{avg}</div>
+                    {/* Panel 3: Live Feedback */}
+                    <Allotment.Pane minSize={150}>
+                        <div className="h-full flex flex-col bg-slate-900">
+                            <div className="p-3 border-b border-slate-700/50 bg-slate-800/30 shrink-0 flex items-center justify-between sticky top-0 z-10 backdrop-blur">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Live Feedback</h3>
+                                    <div className="flex bg-slate-800 rounded p-0.5 border border-slate-700">
+                                        <button
+                                            onClick={() => setFilterType('all')}
+                                            className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded transition-all ${filterType === 'all' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            All
+                                        </button>
+                                        <button
+                                            onClick={() => setFilterType('question')}
+                                            className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded transition-all ${filterType === 'question' ? 'bg-amber-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            Q&A
+                                        </button>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-6 text-slate-400 hover:text-white gap-1" onClick={() => setShowQR(true)}>
+                                    <QrCode className="w-3 h-3" /> <span className="text-xs">Share</span>
+                                </Button>
                             </div>
-                            <div className="bg-slate-900/50 p-3 rounded-lg text-center">
-                                <div className="text-xs text-slate-500 uppercase">Reviews</div>
-                                <div className="text-2xl font-bold text-purple-400">{count}</div>
+
+                            {/* Comments Stream */}
+                            <div className="flex-1 min-h-0 overflow-y-auto p-3">
+                                <div className="space-y-3">
+                                    {filteredReviews.filter(r => r.comment).length === 0 ? (
+                                        <div className="text-center py-10 text-slate-600 italic text-sm">
+                                            {filterType === 'question' ? 'No questions yet...' : 'Waiting for comments...'}
+                                        </div>
+                                    ) : (
+                                        filteredReviews
+                                            .filter(r => r.comment)
+                                            .map((review, i) => {
+                                                const userType = review.userType || 'student';
+                                                const visibility = topic?.presentationConfig?.feedbackVisibility || { teacher: true, student: true, guest: true };
+                                                const showName = visibility[userType] !== false;
+                                                const displayName = showName ? (review.reviewerName || 'Anonymous') : 'Anonymous';
+
+                                                return (
+                                                    <div key={i} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 group relative">
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <span className={`font-bold text-xs ${userType === 'teacher' ? 'text-purple-400' : 'text-slate-300'}`}>
+                                                                {displayName}
+                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] text-slate-500">
+                                                                    {new Date(review.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                                {onDeleteReview && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            onDeleteReview(review._id);
+                                                                        }}
+                                                                        className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                                                                        title="Delete Comment"
+                                                                    >
+                                                                        <Trash2 className="w-3 h-3" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-sm text-slate-400 leading-snug">
+                                                            {review.feedbackType === 'question' && (
+                                                                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-500/30 mr-2 align-middle inline-block">
+                                                                    QUESTION
+                                                                </span>
+                                                            )}
+                                                            {review.comment}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })
+                                    )}
+                                </div>
                             </div>
+
+                            {/* Viz Footer */}
+                            {reviewCount > 0 && (
+                                <div className="shrink-0 pt-2 pb-4 bg-slate-900 border-t border-slate-700/50">
+                                    {/* <div className="text-[10px] text-slate-500 uppercase mb-2 text-center">Live Scores</div> */}
+                                    <ScoreBeeswarmViz reviews={projectReviews} width={340} height={100} />
+                                </div>
+                            )}
                         </div>
-                    );
-                })()}
+                    </Allotment.Pane>
+                </Allotment>
             </div>
 
             <Dialog open={showQR} onOpenChange={setShowQR}>
