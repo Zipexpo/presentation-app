@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,9 @@ export default function StudentLivePage() {
     // Form State
     const [scores, setScores] = useState({}) // { [label]: number }
     const [comment, setComment] = useState('')
+    const [reviews, setReviews] = useState([]) // unused?
     const [feedbackType, setFeedbackType] = useState('comment')
+    const [showMobileScores, setShowMobileScores] = useState(false)
 
     // Reviews State
     const [myReviews, setMyReviews] = useState([])
@@ -121,6 +123,43 @@ export default function StudentLivePage() {
     useEffect(() => {
         fetchMyReviews();
     }, [liveState?.currentProject?._id, guestId, status]);
+
+    // PRE-CALCULATE CONFIG & GROUPS (Must be before early returns)
+    let config = liveState?.config;
+    let currentProject = liveState?.currentProject;
+
+    // Targeted Evaluation Override logic
+    if (config?.specialEvaluationConfig?.enabled && session?.user?.email) {
+        const isEvaluator = config.specialEvaluationConfig.evaluatorEmails?.some(e => e.trim().toLowerCase() === session.user.email.toLowerCase());
+        if (isEvaluator) {
+            config = {
+                ...config,
+                gradingType: 'survey',
+                surveyQuestions: config.specialEvaluationConfig.surveyQuestions
+            };
+        }
+    }
+
+    const groupedQuestions = useMemo(() => {
+        const qs = config?.surveyQuestions || [];
+        const res = [];
+        let currentGroup = null;
+
+        qs.forEach(q => {
+            if (q.type === 'rubric') {
+                if (!currentGroup) {
+                    currentGroup = { type: 'rubric-group', questions: [q] };
+                    res.push(currentGroup);
+                } else {
+                    currentGroup.questions.push(q);
+                }
+            } else {
+                currentGroup = null;
+                res.push(q);
+            }
+        });
+        return res;
+    }, [config?.surveyQuestions]);
 
     const submitScores = async (e) => {
         e.preventDefault();
@@ -271,8 +310,7 @@ export default function StudentLivePage() {
         );
     }
 
-    // Active Project State
-    const { currentProject, config } = liveState;
+    // (State is already derived at the top of the component)
 
     return (
         <div className="min-h-screen pb-20 bg-slate-50/50">
@@ -410,6 +448,9 @@ export default function StudentLivePage() {
                             <div className="flex items-center gap-2 mb-2 lg:hidden">
                                 <div className="h-px bg-slate-200 flex-1"></div>
                                 <span className="text-xs uppercase font-bold text-slate-400">Grading Form</span>
+                                <button type="button" onClick={() => setShowMobileScores(!showMobileScores)} className={`text-[10px] font-bold px-2 py-0.5 rounded border transition-colors ${showMobileScores ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
+                                    {showMobileScores ? 'Hide Points' : 'Show Points'}
+                                </button>
                                 <div className="h-px bg-slate-200 flex-1"></div>
                             </div>
 
@@ -417,88 +458,242 @@ export default function StudentLivePage() {
                             <div className="space-y-6">
                                 {config?.gradingType === 'survey' ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {config.surveyQuestions?.map((q, idx) => (
-                                            <div key={idx} className={`glass-card p-5 animate-in slide-in-from-bottom-2 duration-500 border border-white/60 shadow-sm hover:shadow-md transition-shadow ${q.type === 'text' || q.type === 'scale' ? 'md:col-span-2' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
-                                                <div className="flex justify-between items-start gap-4 mb-3">
-                                                    <Label className="text-base font-bold text-slate-800 leading-snug">{q.question}</Label>
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100 shrink-0">
-                                                        {q.type || 'choice'}
-                                                    </span>
-                                                </div>
+                                        {groupedQuestions.map((item, idx) => {
+                                            // -------------------------
+                                            // RUBRIC GROUP (MATRIX)
+                                            // -------------------------
+                                            // -------------------------
+                                            // RUBRIC GROUP (MATRIX)
+                                            // -------------------------
+                                            if (item.type === 'rubric-group' || item.type === 'matrix') {
+                                                const isNativeMatrix = item.type === 'matrix';
+                                                const headers = isNativeMatrix ? (item.columns || []) : (item.questions[0]?.options || []);
+                                                const rows = isNativeMatrix ? (item.rows || []) : (item.questions || []);
 
-                                                {/* Choice */}
-                                                {(!q.type || q.type === 'choice') && (
-                                                    <div className="space-y-2">
-                                                        {q.options?.map((opt, oIdx) => (
-                                                            <button
-                                                                type="button"
-                                                                key={oIdx}
-                                                                onClick={() => setScores({ ...scores, [q.question]: opt.score })}
-                                                                className={`w-full relative p-3 pl-4 pr-12 rounded-xl border text-left transition-all duration-200 group flex items-center justify-between ${scores[q.question] === opt.score ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-[1.01]' : 'bg-white/50 border-slate-200 hover:bg-white hover:border-blue-300 text-slate-700 hover:shadow-sm'}`}
-                                                            >
-                                                                <div className="font-semibold text-sm">{opt.label}</div>
-                                                                {scores[q.question] === opt.score && <Check className="w-5 h-5 text-white/90" />}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                {/* Rating */}
-                                                {q.type === 'rating' && (
-                                                    <div className="flex justify-center gap-3 py-4 bg-white/30 rounded-xl">
-                                                        {[1, 2, 3, 4, 5].map((val) => (
-                                                            <button
-                                                                key={val}
-                                                                type="button"
-                                                                onClick={() => setScores({ ...scores, [q.question]: val })}
-                                                                className="transition-transform hover:scale-110 focus:outline-none group"
-                                                            >
-                                                                <Star
-                                                                    className={`w-8 h-8 md:w-10 md:h-10 transition-colors ${scores[q.question] >= val ? 'fill-yellow-400 text-yellow-400 drop-shadow-sm' : 'text-slate-200 group-hover:text-slate-300'}`}
-                                                                    strokeWidth={scores[q.question] >= val ? 0 : 2}
-                                                                />
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                {/* Scale */}
-                                                {q.type === 'scale' && (
-                                                    <div className="py-2 px-2">
-                                                        <div className="relative mb-6">
-                                                            <div className="absolute top-1/2 left-0 w-full h-2 bg-slate-100 rounded-full -z-10"></div>
-                                                            <input
-                                                                type="range"
-                                                                min={q.scaleConfig?.min || 1}
-                                                                max={q.scaleConfig?.max || 5}
-                                                                step="1"
-                                                                value={scores[q.question] || (q.scaleConfig?.min || 1)}
-                                                                onChange={(e) => setScores({ ...scores, [q.question]: Number(e.target.value) })}
-                                                                className="w-full h-2 bg-transparent appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:active:scale-110"
-                                                            />
-                                                        </div>
-                                                        <div className="flex justify-between items-end">
-                                                            <div className="text-xs font-semibold text-slate-400 uppercase">{q.scaleConfig?.minLabel || 'Low'}</div>
-                                                            <div className="text-2xl font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">
-                                                                {scores[q.question] || (q.scaleConfig?.min || 1)}
+                                                return (
+                                                    <div key={idx} className="md:col-span-2 glass-card overflow-hidden border border-white/60 shadow-sm animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                        {isNativeMatrix && item.question && (
+                                                            <div className="px-6 py-4 border-b border-slate-200/60 bg-white/50">
+                                                                <h3 className="font-bold text-lg text-slate-800">{item.question}</h3>
                                                             </div>
-                                                            <div className="text-xs font-semibold text-slate-400 uppercase">{q.scaleConfig?.maxLabel || 'High'}</div>
+                                                        )}
+
+                                                        {/* A. DESKTOP VIEW (Table) */}
+                                                        <div className="hidden md:block overflow-x-auto">
+                                                            <table className="w-full text-sm text-left">
+                                                                <thead className="text-xs text-slate-500 uppercase bg-slate-50/80 border-b border-slate-200">
+                                                                    <tr>
+                                                                        <th className="px-4 py-3 font-bold w-1/4 min-w-[150px] bg-slate-50/80 sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Criteria</th>
+                                                                        {headers.map((h, i) => (
+                                                                            <th key={i} className="px-4 py-3 font-bold text-center min-w-[180px] align-top bg-slate-50/80">
+                                                                                <div className="flex flex-col gap-0.5 items-center">
+                                                                                    {(h.label || h.columnLabel) && <span className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-tight">{h.label || h.columnLabel}</span>}
+                                                                                    <span className="text-[10px] text-slate-500 font-mono">({h.score ?? h.baseScore} pts)</span>
+                                                                                </div>
+                                                                            </th>
+                                                                        ))}
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-slate-100">
+                                                                    {rows.map((q, qIdx) => {
+                                                                        const questionText = isNativeMatrix ? q.text : q.question;
+                                                                        const options = isNativeMatrix ? q.cells : q.options;
+
+                                                                        return (
+                                                                            <tr key={qIdx} className={`hover:bg-slate-50/50 transition-colors ${qIdx % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}`}>
+                                                                                <td className="px-4 py-4 font-bold text-slate-700 align-top sticky left-0 bg-white/95 backdrop-blur-sm shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">
+                                                                                    {questionText}
+                                                                                </td>
+                                                                                {options?.map((opt, oIdx) => {
+                                                                                    const isSelected = scores[questionText] === opt.score;
+                                                                                    return (
+                                                                                        <td key={oIdx} className="p-2 align-top h-full">
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => setScores({ ...scores, [questionText]: opt.score })}
+                                                                                                className={`w-full h-full p-4 rounded-lg text-left transition-all duration-200 border leading-relaxed min-h-[120px] flex flex-col justify-start ${isSelected
+                                                                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-200'
+                                                                                                    : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50/30'}`}
+                                                                                            >
+                                                                                                <div
+                                                                                                    className={`text-xs md:text-sm prose prose-sm max-w-none ${isSelected ? 'prose-invert text-white' : 'text-slate-600'}`}
+                                                                                                    dangerouslySetInnerHTML={{ __html: opt.label }}
+                                                                                                    style={{ margin: 0 }}
+                                                                                                />
+                                                                                            </button>
+                                                                                        </td>
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                        )
+                                                                    })}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+
+                                                        {/* B. MOBILE VIEW (Card Stack) */}
+                                                        <div className="md:hidden space-y-4 p-4 bg-slate-50/50">
+                                                            {rows.map((q, qIdx) => {
+                                                                const questionText = isNativeMatrix ? q.text : q.question;
+                                                                const options = isNativeMatrix ? q.cells : q.options;
+
+                                                                return (
+                                                                    <div key={qIdx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                                                        {/* Criteria Header */}
+                                                                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10 backdrop-blur-sm bg-slate-50/90">
+                                                                            <span className="font-bold text-sm text-slate-800 leading-tight pr-2">{questionText}</span>
+                                                                            {scores[questionText] !== undefined && (
+                                                                                <span className="shrink-0 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 whitespace-nowrap">
+                                                                                    {scores[questionText]} pts
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Options/Cells */}
+                                                                        <div className="divide-y divide-slate-50">
+                                                                            {options?.map((opt, oIdx) => {
+                                                                                const isSelected = scores[questionText] === opt.score;
+                                                                                // Fallback for column header
+                                                                                const colHeader = headers[oIdx]?.label || headers[oIdx]?.columnLabel || `Option ${oIdx + 1}`;
+
+                                                                                return (
+                                                                                    <button
+                                                                                        key={oIdx}
+                                                                                        type="button"
+                                                                                        onClick={() => setScores({ ...scores, [questionText]: opt.score })}
+                                                                                        className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors active:bg-slate-100 ${isSelected ? 'bg-blue-50/60' : 'bg-transparent hover:bg-slate-50'}`}
+                                                                                    >
+                                                                                        {/* Custom Radio Circle */}
+                                                                                        <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'}`}>
+                                                                                            {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                                                                        </div>
+
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            {showMobileScores && (
+                                                                                                <div className="flex justify-between items-baseline mb-1">
+                                                                                                    <span className={`text-[10px] uppercase font-bold tracking-wider truncate mr-2 ${isSelected ? 'text-blue-700' : 'text-slate-500'}`}>
+                                                                                                        {colHeader}
+                                                                                                    </span>
+                                                                                                    <span className="text-[10px] font-mono font-bold text-slate-400">
+                                                                                                        {opt.score} pts
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            <div
+                                                                                                className={`text-sm prose prose-sm max-w-none leading-relaxed ${isSelected ? 'text-slate-800' : 'text-slate-600'}`}
+                                                                                                dangerouslySetInnerHTML={{ __html: opt.label }}
+                                                                                            />
+                                                                                        </div>
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
-                                                )}
+                                                );
+                                            }
 
-                                                {/* Text */}
-                                                {q.type === 'text' && (
-                                                    <textarea
-                                                        className="w-full p-4 rounded-xl border border-slate-200 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition min-h-[100px] shadow-inner font-medium"
-                                                        placeholder="Type your answer here..."
-                                                        value={scores[q.question] || ''}
-                                                        onChange={(e) => setScores({ ...scores, [q.question]: e.target.value })}
-                                                    />
-                                                )}
-                                            </div>
-                                        ))}
-                                        {(!config.surveyQuestions || config.surveyQuestions.length === 0) && (
+                                            // -------------------------
+                                            // REGULAR ITEMS
+                                            // -------------------------
+                                            const q = item;
+                                            return (
+                                                <div key={idx} className={`glass-card p-5 animate-in slide-in-from-bottom-2 duration-500 border border-white/60 shadow-sm hover:shadow-md transition-shadow ${q.type === 'section' ? 'md:col-span-2 bg-slate-100/50 !border-none !shadow-none !p-0 mt-4' : ''} ${q.type === 'text' || q.type === 'scale' ? 'md:col-span-2' : ''}`} style={{ animationDelay: `${idx * 50}ms` }}>
+
+                                                    {/* SECTION HEADER */}
+                                                    {q.type === 'section' ? (
+                                                        <div className="flex items-center gap-4 py-2">
+                                                            <div className="h-px bg-slate-300 flex-1"></div>
+                                                            <h3 className="text-lg font-bold text-slate-700 uppercase tracking-wide">{q.title || q.question}</h3>
+                                                            <div className="h-px bg-slate-300 flex-1"></div>
+                                                        </div>
+                                                    ) : (
+                                                        // STANDARD QUESTION HEADER
+                                                        <div className="flex justify-between items-start gap-4 mb-3">
+                                                            <Label className="text-base font-bold text-slate-800 leading-snug">{q.question}</Label>
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100 shrink-0">
+                                                                {q.type || 'choice'}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Choice */}
+                                                    {(!q.type || q.type === 'choice') && (
+                                                        <div className="space-y-2">
+                                                            {q.options?.map((opt, oIdx) => (
+                                                                <button
+                                                                    type="button"
+                                                                    key={oIdx}
+                                                                    onClick={() => setScores({ ...scores, [q.question]: opt.score })}
+                                                                    className={`w-full relative p-3 pl-4 pr-12 rounded-xl border text-left transition-all duration-200 group flex items-center justify-between ${scores[q.question] === opt.score ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-[1.01]' : 'bg-white/50 border-slate-200 hover:bg-white hover:border-blue-300 text-slate-700 hover:shadow-sm'}`}
+                                                                >
+                                                                    <div className="font-semibold text-sm">{opt.label}</div>
+                                                                    {scores[q.question] === opt.score && <Check className="w-5 h-5 text-white/90" />}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Rating */}
+                                                    {q.type === 'rating' && (
+                                                        <div className="flex justify-center gap-3 py-4 bg-white/30 rounded-xl">
+                                                            {[1, 2, 3, 4, 5].map((val) => (
+                                                                <button
+                                                                    key={val}
+                                                                    type="button"
+                                                                    onClick={() => setScores({ ...scores, [q.question]: val })}
+                                                                    className="transition-transform hover:scale-110 focus:outline-none group"
+                                                                >
+                                                                    <Star
+                                                                        className={`w-8 h-8 md:w-10 md:h-10 transition-colors ${scores[q.question] >= val ? 'fill-yellow-400 text-yellow-400 drop-shadow-sm' : 'text-slate-200 group-hover:text-slate-300'}`}
+                                                                        strokeWidth={scores[q.question] >= val ? 0 : 2}
+                                                                    />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Scale */}
+                                                    {q.type === 'scale' && (
+                                                        <div className="py-2 px-2">
+                                                            <div className="relative mb-6">
+                                                                <div className="absolute top-1/2 left-0 w-full h-2 bg-slate-100 rounded-full -z-10"></div>
+                                                                <input
+                                                                    type="range"
+                                                                    min={q.scaleConfig?.min || 1}
+                                                                    max={q.scaleConfig?.max || 5}
+                                                                    step="1"
+                                                                    value={scores[q.question] || (q.scaleConfig?.min || 1)}
+                                                                    onChange={(e) => setScores({ ...scores, [q.question]: Number(e.target.value) })}
+                                                                    className="w-full h-2 bg-transparent appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:active:scale-110"
+                                                                />
+                                                            </div>
+                                                            <div className="flex justify-between items-end">
+                                                                <div className="text-xs font-semibold text-slate-400 uppercase">{q.scaleConfig?.minLabel || 'Low'}</div>
+                                                                <div className="text-2xl font-bold text-blue-600 font-mono bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">
+                                                                    {scores[q.question] || (q.scaleConfig?.min || 1)}
+                                                                </div>
+                                                                <div className="text-xs font-semibold text-slate-400 uppercase">{q.scaleConfig?.maxLabel || 'High'}</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Text */}
+                                                    {q.type === 'text' && (
+                                                        <textarea
+                                                            className="w-full p-4 rounded-xl border border-slate-200 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition min-h-[100px] shadow-inner font-medium"
+                                                            placeholder="Type your answer here..."
+                                                            value={scores[q.question] || ''}
+                                                            onChange={(e) => setScores({ ...scores, [q.question]: e.target.value })}
+                                                        />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {(!groupedQuestions || groupedQuestions.length === 0) && (
                                             <div className="md:col-span-2 text-center text-slate-500 italic p-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">No survey questions configured.</div>
                                         )}
                                     </div>

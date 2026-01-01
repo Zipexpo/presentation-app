@@ -30,6 +30,74 @@ const PresentationSidebar = memo(function PresentationSidebar({
 
     const projectReviews = reviews.filter(r => String(r.projectId) === String(currentProject?._id));
     const filteredReviews = projectReviews.filter(r => filterType === 'all' || r.feedbackType === filterType);
+
+    // Calculate Dynamic Max Score based on Config
+    // Helper to calc max per question
+    const calculateMaxPerQuestion = (questions) => {
+        if (!questions || !questions.length) return 10;
+        let totalMax = 0;
+        let itemCount = 0;
+        questions.forEach(q => {
+            if (q.type === 'matrix') {
+                const maxBase = Math.max(...(q.columns?.map(c => c.baseScore ?? c.score ?? 0) || [0]));
+                const rows = q.rows || [];
+                rows.forEach(r => {
+                    const w = r.weight ?? 1;
+                    totalMax += maxBase * w;
+                    itemCount++;
+                });
+            } else if (q.type === 'rubric') {
+                const max = Math.max(...(q.options?.map(o => o.score) || [0]));
+                totalMax += max;
+                itemCount++;
+            } else if (q.type === 'scale') {
+                totalMax += (q.scaleConfig?.max || 5);
+                itemCount++;
+            } else if (q.type === 'rating') {
+                totalMax += 5;
+                itemCount++;
+            } else if (q.type === 'choice') {
+                const max = Math.max(...(q.options?.map(o => o.score) || [0]));
+                totalMax += max;
+                itemCount++;
+            }
+        });
+        return itemCount > 0 ? (totalMax / itemCount) : 10;
+    };
+
+    // 1. Standard Config Max
+    let standardQuestions = topic.presentationConfig?.surveyQuestions || [];
+    if (!standardQuestions.length && topic.presentationConfig?.gradingRubric?.length) {
+        standardQuestions = topic.presentationConfig.gradingRubric.map(r => ({ type: 'rubric', options: [{ score: r.maxScore || 10 }] }));
+    }
+    const standardMax = calculateMaxPerQuestion(standardQuestions);
+
+    // 2. Special Config Max
+    const specialConfig = topic.presentationConfig?.specialEvaluationConfig || topic.specialEvaluationConfig;
+    const specialQuestions = specialConfig?.enabled ? specialConfig.surveyQuestions : [];
+    const specialMax = calculateMaxPerQuestion(specialQuestions);
+
+    // 3. Normalize Reviews to 0-10 Scale
+    const processedReviews = projectReviews.map(r => {
+        if (!r.scores || r.scores.length === 0) return { ...r, normalizedScore: 0 };
+
+        const totalScore = r.scores.reduce((acc, s) => acc + (Number(s.score) || 0), 0);
+        const rawAvg = totalScore / r.scores.length;
+
+        // Heuristic to detect Special Config
+        let maxForReview = standardMax;
+        if (specialConfig?.enabled) {
+            if (r.userType === 'teacher') maxForReview = specialMax;
+            else if (rawAvg > standardMax && specialMax > standardMax) maxForReview = specialMax;
+        }
+
+        return {
+            ...r,
+            normalizedScore: (rawAvg / maxForReview) * 10
+        };
+    });
+
+    const maxScoreDomain = 10;
     const reviewCount = projectReviews.length;
 
     return (
@@ -274,12 +342,14 @@ const PresentationSidebar = memo(function PresentationSidebar({
                             </div>
 
                             {/* Viz Footer */}
-                            {reviewCount > 0 && (
-                                <div className="shrink-0 pt-2 pb-4 bg-slate-900 border-t border-slate-700/50">
-                                    {/* <div className="text-[10px] text-slate-500 uppercase mb-2 text-center">Live Scores</div> */}
-                                    <ScoreBeeswarmViz reviews={projectReviews} width={340} height={100} />
+                            <div className="shrink-0 pt-2 pb-4 bg-slate-900 border-t border-slate-700/50">
+                                <div className="text-[10px] text-slate-500 uppercase mb-2 text-center flex items-center justify-center gap-2">
+                                    <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                    Live Scores
+                                    <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
                                 </div>
-                            )}
+                                <ScoreBeeswarmViz reviews={processedReviews} width={340} height={100} maxScore={maxScoreDomain} />
+                            </div>
                         </div>
                     </Allotment.Pane>
                 </Allotment>

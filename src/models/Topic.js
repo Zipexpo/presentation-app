@@ -1,5 +1,44 @@
 import mongoose from 'mongoose';
 
+const surveyQuestionSchema = {
+  type: { type: String, enum: ['choice', 'scale', 'rating', 'text', 'rubric', 'section', 'matrix'], default: 'choice' },
+  question: { type: String },
+  title: { type: String }, // For Section
+  weight: { type: Number, default: 1 }, // For Matrix Rows
+  options: [{
+    label: { type: String },
+    score: { type: Number, default: 0 },
+    columnLabel: String,
+    baseScore: Number
+  }],
+  scaleConfig: {
+    min: { type: Number, default: 1 },
+    max: { type: Number, default: 5 },
+    minLabel: String,
+    maxLabel: String
+  },
+  textConfig: {
+    maxScore: { type: Number, default: 0 }
+  },
+  // Matrix Fields
+  rows: [{
+    id: String,
+    text: String,
+    weight: { type: Number, default: 1 },
+    cells: [{
+      label: String,
+      score: Number,
+      baseScore: Number,
+      columnLabel: String
+    }]
+  }],
+  columns: [{
+    label: String,
+    baseScore: Number,
+    score: Number
+  }]
+};
+
 const topicSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
@@ -26,23 +65,7 @@ const topicSchema = new mongoose.Schema({
       label: { type: String }, // e.g., "Creativity"
       maxScore: { type: Number, default: 10 }
     }],
-    surveyQuestions: [{
-      type: { type: String, enum: ['choice', 'scale', 'rating', 'text'], default: 'choice' },
-      question: { type: String },
-      options: [{
-        label: { type: String },
-        score: { type: Number, default: 0 }
-      }],
-      scaleConfig: {
-        min: { type: Number, default: 1 },
-        max: { type: Number, default: 5 },
-        minLabel: String,
-        maxLabel: String
-      },
-      textConfig: {
-        maxScore: { type: Number, default: 0 }
-      }
-    }],
+    surveyQuestions: [surveyQuestionSchema],
     allowComments: { type: Boolean, default: true },
     allowGuest: { type: Boolean, default: false },
     maxCommentsPerProject: { type: Number, default: 0 }, // 0 = unlimited
@@ -50,6 +73,12 @@ const topicSchema = new mongoose.Schema({
       teacher: { type: Boolean, default: true },
       student: { type: Boolean, default: true },
       guest: { type: Boolean, default: true }
+    },
+    // Special Evaluation (e.g. for Judges/Teachers)
+    specialEvaluationConfig: {
+      enabled: { type: Boolean, default: false },
+      evaluatorEmails: [{ type: String }], // List of emails allowed to see this view
+      surveyQuestions: [surveyQuestionSchema]
     }
   },
   activeSession: {

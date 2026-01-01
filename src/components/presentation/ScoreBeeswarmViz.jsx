@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
-export default function ScoreBeeswarmViz({ reviews = [], width = 300, height = 150 }) {
+export default function ScoreBeeswarmViz({ reviews = [], width = 300, height = 150, maxScore = 10 }) {
     const svgRef = useRef(null);
     const simulationRef = useRef(null);
     const [displayData, setDisplayData] = useState([]);
@@ -18,20 +18,23 @@ export default function ScoreBeeswarmViz({ reviews = [], width = 300, height = 1
         // 1. Map raw data
         const mapped = reviews.map(r => {
             if (!r.scores || r.scores.length === 0) return null;
-            const total = r.scores.reduce((acc, s) => acc + (s.score || 0), 0);
+            const total = r.scores.reduce((acc, s) => acc + (Number(s.score) || 0), 0);
             const avg = total / r.scores.length;
+
+            // Prefer pre-normalized score if available (from PresentationSidebar)
+            const finalScore = (typeof r.normalizedScore === 'number') ? r.normalizedScore : avg;
 
             // Use reviewerId or guestId as stable identifier for the USER
             const stableId = r.reviewerId || r.guestId || r._id;
 
             return {
                 id: stableId, // Key for D3 (User Identity)
-                score: avg,
+                score: finalScore,
                 userType: r.userType || 'student',
                 reviewerName: r.reviewerName,
                 updatedAt: new Date(r.updatedAt || r.createdAt)
             };
-        }).filter(d => d !== null && d.score > 0);
+        }).filter(d => d !== null && typeof d.score === 'number' && !isNaN(d.score));
 
         // 2. Deduplicate: Keep latest per stableId
         const bestPerUser = new Map();
@@ -70,7 +73,7 @@ export default function ScoreBeeswarmViz({ reviews = [], width = 300, height = 1
 
         // B. Update Scales & Axis
         const xScale = d3.scaleLinear()
-            .domain([0, 10])
+            .domain([0, maxScore])
             .range([0, innerWidth]);
 
         const colorScale = d3.scaleOrdinal()

@@ -12,7 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import FeedbackModal from '@/components/ui/FeedbackModal'
+import PresetManager from '@/components/teacher/PresetManager'
+import EvaluationEditor from '@/components/teacher/EvaluationEditor'
 import { ExternalLink, Video, FileText, ImageIcon, Calendar, Clock, Edit3, ArrowLeft, LayoutGrid, List, Search, Filter, Plus, X, AlertTriangle } from 'lucide-react'
 
 export default function TopicDetailPage() {
@@ -82,13 +85,28 @@ export default function TopicDetailPage() {
           setTopic(dataTopic.topic)
           setProjects(dataTopic.projects)
           // Populate edit form
+          // Auto-migrate Logic
+          let presConfig = dataTopic.topic.presentationConfig || { durationPerProject: 10, gradingRubric: [], gradingType: 'survey', surveyQuestions: [] };
+
+          if ((!presConfig.gradingType || presConfig.gradingType === 'rubric') && presConfig.gradingRubric?.length > 0 && (!presConfig.surveyQuestions || presConfig.surveyQuestions.length === 0)) {
+            // Migrate Rubric to Survey
+            const newSurvey = presConfig.gradingRubric.map(r => ({
+              type: 'scale',
+              question: r.label,
+              scaleConfig: { min: 1, max: r.maxScore || 10, minLabel: 'Poor', maxLabel: 'Excellent' }
+            }));
+            presConfig = { ...presConfig, gradingType: 'survey', surveyQuestions: newSurvey };
+          } else if (!presConfig.gradingType) {
+            presConfig.gradingType = 'survey';
+          }
+
           setEditForm({
             title: dataTopic.topic.title,
             description: dataTopic.topic.description,
             submissionDeadline: dataTopic.topic.submissionDeadline ? new Date(dataTopic.topic.submissionDeadline).toISOString().slice(0, 16) : '',
             presentationDate: dataTopic.topic.presentationDate ? new Date(dataTopic.topic.presentationDate).toISOString().slice(0, 16) : '',
             submissionConfig: dataTopic.topic.submissionConfig || { includeSourceCode: false, includeThumbnail: false, includeMaterials: false, includeGroupName: false },
-            presentationConfig: dataTopic.topic.presentationConfig || { durationPerProject: 10, questionDuration: 5, breakDuration: 2, gradingRubric: [], completionMessage: '', defaultResource: 'presentation', gradingType: 'rubric', surveyQuestions: [], maxCommentsPerProject: 0 },
+            presentationConfig: presConfig,
             classId: dataTopic.topic.classId || ''
           });
         } else {
@@ -244,478 +262,192 @@ export default function TopicDetailPage() {
           <section className="glass-card p-4 md:p-6 border-l-4 border-blue-500 animate-in slide-in-from-top-4 fade-in duration-300">
             <h2 className="text-lg font-semibold mb-4">Edit Topic Settings</h2>
             <form onSubmit={handleUpdateTopic} className="space-y-4">
-              {/* Submission Deadline */}
-              <div>
-                <Label>Title</Label>
-                <Input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} className="bg-white/50 border-slate-200" />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Input value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className="bg-white/50 border-slate-200" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Submission Deadline</Label>
-                  <Input type="datetime-local" value={editForm.submissionDeadline} onChange={e => setEditForm({ ...editForm, submissionDeadline: e.target.value })} className="bg-white/50" />
-                </div>
-                <div>
-                  <Label>Presentation Date</Label>
-                  <Input type="datetime-local" value={editForm.presentationDate} onChange={e => setEditForm({ ...editForm, presentationDate: e.target.value })} className="bg-white/50" />
-                </div>
-              </div>
-              <div className="pt-4 border-t border-slate-200">
-                <h3 className="font-semibold text-slate-800 mb-2">Access & Permissions</h3>
-                <div className="flex gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                      checked={editForm.presentationConfig?.allowComments ?? true}
-                      onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, allowComments: e.target.checked } }))}
-                    />
-                    <div>
-                      <span className="block text-sm font-bold text-slate-700">Allow Comments</span>
-                      <span className="block text-xs text-slate-500">Students can leave text feedback</span>
+              <Tabs defaultValue="general" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="scoring">Scoring Method</TabsTrigger>
+                  <TabsTrigger value="targeted">Targeted Evaluation</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="general" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  {/* Row 1: Basic Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <Label className="text-xs font-bold text-slate-500 uppercase">Title</Label>
+                      <Input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} className="bg-white/50 border-slate-200 h-9" />
                     </div>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                      checked={editForm.presentationConfig?.allowGuest ?? false}
-                      onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, allowGuest: e.target.checked } }))}
-                    />
                     <div>
-                      <span className="block text-sm font-bold text-slate-700">Guest Grading</span>
-                      <span className="block text-xs text-slate-500">Allow grading without login</span>
-                    </div>
-                  </label>
-                </div>
-
-                <div className="mt-4">
-                  <Label>Max Comments per Project (0 = Unlimited)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editForm.presentationConfig?.maxCommentsPerProject ?? 0}
-                    onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, maxCommentsPerProject: Number(e.target.value) } }))}
-                    className="bg-white/50 border-slate-200 mt-1"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">Limit how many times a single student/guest can comment on one project.</p>
-                </div>
-              </div>
-
-              <div>
-                <Label>Linked Class</Label>
-                <select value={editForm.classId} onChange={e => setEditForm({ ...editForm, classId: e.target.value })} className="flex h-10 w-full rounded-md border border-input bg-white/50 px-3 py-2 text-sm">
-                  <option value="">-- No Class Restriction --</option>
-                  {classes.map(cls => (<option key={cls._id} value={cls._id}>{cls.name}</option>))}
-                </select>
-              </div>
-              {/* Toggles */}
-              <div className="space-y-2 border border-slate-200/60 p-4 rounded-lg bg-white/30">
-                <Label className="font-semibold">Submission Requirements</Label>
-                <div className="flex flex-wrap gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={editForm.submissionConfig.includeSourceCode} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeSourceCode: e.target.checked } }))} className="w-4 h-4" />
-                    <span className="text-sm">Source Code</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={editForm.submissionConfig.includeThumbnail} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeThumbnail: e.target.checked } }))} className="w-4 h-4" />
-                    <span className="text-sm">Thumbnail</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={editForm.submissionConfig.includeMaterials} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeMaterials: e.target.checked } }))} className="w-4 h-4" />
-                    <span className="text-sm">Materials</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={editForm.submissionConfig.includeGroupName} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeGroupName: e.target.checked } }))} className="w-4 h-4" />
-                    <span className="text-sm font-semibold text-blue-600">Group Name</span>
-                  </label>
-                </div>
-              </div>
-              {/* Dynamic Resources */}
-              <div className="pt-4 border-t border-slate-200">
-                <div className="flex justify-between items-center mb-2">
-                  <Label className="font-semibold">Additional Resources</Label>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setEditForm(p => ({ ...p, resourceRequirements: [...(p.resourceRequirements || []), { label: '', type: 'url' }] }))}>+ Add</Button>
-                </div>
-                <div className="space-y-3">
-                  {editForm.resourceRequirements && editForm.resourceRequirements.map((req, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <Input value={req.label} onChange={(e) => {
-                        const newReqs = [...editForm.resourceRequirements]; newReqs[idx].label = e.target.value; setEditForm(p => ({ ...p, resourceRequirements: newReqs }));
-                      }} className="flex-1 bg-white/50" placeholder="Label" />
-                      <select value={req.type} onChange={(e) => {
-                        const newReqs = [...editForm.resourceRequirements]; newReqs[idx].type = e.target.value; setEditForm(p => ({ ...p, resourceRequirements: newReqs }));
-                      }} className="h-10 rounded-md border border-input bg-white/50 px-3 py-2 text-sm">
-                        <option value="url">Link</option> <option value="pdf">PDF</option> <option value="image">Image</option> <option value="video">Video</option>
+                      <Label className="text-xs font-bold text-slate-500 uppercase">Linked Class</Label>
+                      <select value={editForm.classId} onChange={e => setEditForm({ ...editForm, classId: e.target.value })} className="flex h-9 w-full rounded-md border border-input bg-white/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                        <option value="">-- No Class Restriction --</option>
+                        {classes.map(cls => (<option key={cls._id} value={cls._id}>{cls.name}</option>))}
                       </select>
-                      <Button type="button" variant="destructive" size="icon" onClick={() => {
-                        const newReqs = editForm.resourceRequirements.filter((_, i) => i !== idx); setEditForm(p => ({ ...p, resourceRequirements: newReqs }));
-                      }}>&times;</Button>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Presentation Settings */}
-              <div className="pt-4 border-t border-slate-200">
-                <h3 className="font-semibold text-slate-800 mb-2">Presentation Settings</h3>
-                <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label>Presentation Duration (Min)</Label>
-                    <Input type="number" min="0" value={editForm.presentationConfig?.durationPerProject || 10} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, durationPerProject: Number(e.target.value) } }))} className="bg-white/50" />
+                    <Label className="text-xs font-bold text-slate-500 uppercase">Description</Label>
+                    <Input value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className="bg-white/50 border-slate-200 h-9" />
                   </div>
-                  <div>
-                    <Label>Q&A Duration (Min)</Label>
-                    <Input type="number" min="0" value={editForm.presentationConfig?.questionDuration || 5} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, questionDuration: Number(e.target.value) } }))} className="bg-white/50" />
+
+                  {/* Row 2: Dates */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs font-bold text-slate-500 uppercase">Submission Deadline</Label>
+                      <Input type="datetime-local" value={editForm.submissionDeadline} onChange={e => setEditForm({ ...editForm, submissionDeadline: e.target.value })} className="bg-white/50 h-9" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-bold text-slate-500 uppercase">Presentation Date</Label>
+                      <Input type="datetime-local" value={editForm.presentationDate} onChange={e => setEditForm({ ...editForm, presentationDate: e.target.value })} className="bg-white/50 h-9" />
+                    </div>
                   </div>
-                  <div>
-                    <Label>Break Duration (Min)</Label>
-                    <Input type="number" min="0" value={editForm.presentationConfig?.breakDuration || 2} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, breakDuration: Number(e.target.value) } }))} className="bg-white/50" />
-                  </div>
-                </div>
 
-                <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
-                  <Label className="font-medium text-slate-800">Scoring Method</Label>
-                  <div className="flex bg-slate-100 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, gradingType: 'rubric' } }))}
-                      className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${editForm.presentationConfig?.gradingType !== 'survey' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      Rubric
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditForm(p => {
-                        const rubric = p.presentationConfig?.gradingRubric || [];
-                        let survey = p.presentationConfig?.surveyQuestions || [];
-                        // Auto-migrate if survey is empty but rubric has items
-                        if (survey.length === 0 && rubric.length > 0) {
-                          setConfirmModal({
-                            isOpen: true,
-                            message: `Import ${rubric.length} rubric criteria as Scale questions?`,
-                            onConfirm: () => {
-                              const newSurvey = rubric.map(r => ({
-                                type: 'scale',
-                                question: r.label,
-                                scaleConfig: { min: 1, max: r.maxScore || 10, minLabel: 'Poor', maxLabel: 'Excellent' }
-                              }));
-                              setEditForm(prev => ({ ...prev, presentationConfig: { ...prev.presentationConfig, gradingType: 'survey', surveyQuestions: newSurvey } }));
-                              setConfirmModal({ isOpen: false, message: '', onConfirm: null });
-                            },
-                            onCancel: () => setConfirmModal({ isOpen: false, message: '', onConfirm: null })
-                          });
-                          // Return current state, waiting for confirm. If they confirm, we update again.
-                          return p;
-                        }
-                        return { ...p, presentationConfig: { ...p.presentationConfig, gradingType: 'survey', surveyQuestions: survey } };
-                      })}
-                      className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${editForm.presentationConfig?.gradingType === 'survey' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      Survey
-                    </button>
-                  </div>
-                </div>
+                  {/* Row 3: Configs (Side-by-Side) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+                    {/* Left: Permissions & Req */}
+                    <div className="space-y-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                      <h3 className="text-xs font-bold text-slate-800 uppercase mb-2 flex items-center gap-2">
+                        <Edit3 className="w-3 h-3" /> Permissions & Requirements
+                      </h3>
 
-                {editForm.presentationConfig?.gradingType === 'survey' ? (
-                  /* SURVEY EDITOR */
-                  <div className="space-y-6">
-                    {editForm.presentationConfig?.surveyQuestions?.map((q, qIdx) => (
-                      <div key={qIdx} className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 group">
-
-                        {/* New Flex Header Layout */}
-                        <div className="flex flex-col-reverse justify-between items-start mb-4 gap-4 sm:flex-row sm:items-start">
-                          <div className="flex-1 w-full">
-                            <Label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Question {qIdx + 1}</Label>
-                            <Input
-                              placeholder="e.g. Rate the design quality"
-                              value={q.question}
-                              className="bg-white font-medium shadow-sm w-full"
-                              onChange={(e) => {
-                                const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                newQs[qIdx].question = e.target.value;
-                                setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                              }}
-                            />
-                          </div>
-                          <div className="flex gap-2 items-center self-end sm:self-auto sm:pt-6">
-                            <select
-                              value={q.type || 'choice'}
-                              onChange={(e) => {
-                                const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                newQs[qIdx].type = e.target.value;
-                                const t = e.target.value;
-                                if ((t === 'scale' || t === 'rating') && !newQs[qIdx].scaleConfig) {
-                                  newQs[qIdx].scaleConfig = { min: 1, max: 5, minLabel: 'Poor', maxLabel: 'Excellent' };
-                                }
-                                setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                              }}
-                              className="h-10 text-xs rounded-md border border-slate-300 bg-white px-3 cursor-pointer focus:ring-2 focus:ring-blue-500/20 shadow-sm outline-none font-medium"
-                            >
-                              <option value="choice">Multiple Choice</option>
-                              <option value="rating">Star Rating (5 Stars)</option>
-                              <option value="scale">Numeric Scale</option>
-                              <option value="text">Text Response</option>
-                            </select>
-                            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100" onClick={() => {
-                              const newQs = editForm.presentationConfig.surveyQuestions.filter((_, i) => i !== qIdx);
-                              setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                            }}><X className="w-5 h-5" /></Button>
-                          </div>
-                        </div>
-
-                        {/* CONFIG: CHOICE */}
-                        {(q.type === 'choice' || !q.type) && (
-                          <div className="space-y-2 pl-4 border-l-2 border-slate-200">
-                            {q.options?.map((opt, oIdx) => (
-                              <div key={oIdx} className="flex gap-2 items-center">
-                                <div className="w-4 h-4 rounded-full border border-slate-300 bg-white shrink-0" />
-                                <Input
-                                  placeholder="Option Label"
-                                  value={opt.label}
-                                  className="bg-white text-sm h-8"
-                                  onChange={(e) => {
-                                    const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                    newQs[qIdx].options[oIdx].label = e.target.value;
-                                    setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                                  }}
-                                />
-                                <div className="w-20 relative shrink-0">
-                                  <span className="absolute right-2 top-1.5 text-[10px] text-slate-400 font-bold">PTS</span>
-                                  <Input
-                                    type="number"
-                                    value={opt.score}
-                                    className="bg-white text-sm h-8 pr-8"
-                                    onChange={(e) => {
-                                      const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                      newQs[qIdx].options[oIdx].score = Number(e.target.value);
-                                      setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                                    }}
-                                  />
-                                </div>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500 shrink-0" onClick={() => {
-                                  const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                  newQs[qIdx].options = newQs[qIdx].options.filter((_, i) => i !== oIdx);
-                                  setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                                }}>&times;</Button>
-                              </div>
-                            ))}
-                            <Button type="button" size="sm" variant="ghost" className="text-blue-600 h-8 text-xs" onClick={() => {
-                              const newQs = [...editForm.presentationConfig.surveyQuestions];
-                              if (!newQs[qIdx].options) newQs[qIdx].options = [];
-                              newQs[qIdx].options.push({ label: '', score: 0 });
-                              setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                            }}>+ Add Option</Button>
-                          </div>
-                        )}
-
-                        {/* CONFIG: RATING / SCALE */}
-                        {(q.type === 'rating' || q.type === 'scale') && (
-                          <div className="bg-white/50 p-3 rounded-lg border border-slate-200">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
-                              <div>
-                                <Label className="text-[10px] uppercase text-slate-500 font-bold">Min Value</Label>
-                                <Input type="number" value={q.scaleConfig?.min ?? 1} onChange={(e) => {
-                                  const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                  if (!newQs[qIdx].scaleConfig) newQs[qIdx].scaleConfig = {};
-                                  newQs[qIdx].scaleConfig.min = Number(e.target.value);
-                                  setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                                }} className="h-8 text-sm bg-white" />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase text-slate-500 font-bold">Max Value</Label>
-                                <Input type="number" value={q.scaleConfig?.max ?? 5} onChange={(e) => {
-                                  const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                  if (!newQs[qIdx].scaleConfig) newQs[qIdx].scaleConfig = {};
-                                  newQs[qIdx].scaleConfig.max = Number(e.target.value);
-                                  setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                                }} className="h-8 text-sm bg-white" />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase text-slate-500 font-bold">Min Label</Label>
-                                <Input placeholder="Poor" value={q.scaleConfig?.minLabel ?? ''} onChange={(e) => {
-                                  const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                  if (!newQs[qIdx].scaleConfig) newQs[qIdx].scaleConfig = {};
-                                  newQs[qIdx].scaleConfig.minLabel = e.target.value;
-                                  setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                                }} className="h-8 text-sm bg-white" />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] uppercase text-slate-500 font-bold">Max Label</Label>
-                                <Input placeholder="Excellent" value={q.scaleConfig?.maxLabel ?? ''} onChange={(e) => {
-                                  const newQs = [...editForm.presentationConfig.surveyQuestions];
-                                  if (!newQs[qIdx].scaleConfig) newQs[qIdx].scaleConfig = {};
-                                  newQs[qIdx].scaleConfig.maxLabel = e.target.value;
-                                  setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                                }} className="h-8 text-sm bg-white" />
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-slate-400 italic">Values will be used directly as points.</p>
-                          </div>
-                        )}
-
-                        {/* CONFIG: TEXT */}
-                        {q.type === 'text' && (
-                          <div className="bg-white/50 p-3 rounded-lg border border-slate-200">
-                            <Label className="text-[10px] uppercase text-slate-500 font-bold">Max Possible Score</Label>
-                            <Input type="number" value={q.textConfig?.maxScore ?? 0} onChange={(e) => {
-                              const newQs = [...editForm.presentationConfig.surveyQuestions];
-                              if (!newQs[qIdx].textConfig) newQs[qIdx].textConfig = {};
-                              newQs[qIdx].textConfig.maxScore = Number(e.target.value);
-                              setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                            }} className="h-8 text-sm w-32 bg-white" />
-                            <p className="text-xs text-slate-500 mt-2">
-                              <span className="font-bold text-red-500">Note:</span> Text answers require manual grading.
-                              Default score will be 0 until rated.
-                            </p>
-                          </div>
-                        )}
+                      <div className="flex flex-wrap gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm">
+                          <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={editForm.presentationConfig?.allowComments ?? true} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, allowComments: e.target.checked } }))} />
+                          <span>Allow Comments</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-sm">
+                          <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={editForm.presentationConfig?.allowGuest ?? false} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, allowGuest: e.target.checked } }))} />
+                          <span>Guest Grading</span>
+                        </label>
                       </div>
-                    ))}
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                      <Button type="button" variant="outline" className="flex-1 border-dashed" onClick={() => {
-                        const newQs = [...(editForm.presentationConfig.surveyQuestions || [])];
-                        newQs.push({ question: '', type: 'choice', options: [{ label: 'Yes', score: 10 }, { label: 'No', score: 0 }] });
-                        setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs } }));
-                      }}>+ Add Survey Question</Button>
 
-                      <div className="flex gap-2">
-                        <Button type="button" variant="outline" className="text-slate-600 gap-2" onClick={() => {
-                          const csvContent = "Type,Question,Config\nchoice,Example Choice Question,Option1:10;Option2:5\nrating,Example Rating,1;5;Poor;Excellent\nscale,Example Scale,1;10;Low;High\ntext,Example Text,10";
-                          const blob = new Blob([csvContent], { type: 'text/csv' });
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = 'survey_sample.csv';
-                          a.click();
-                        }}>
-                          <FileText className="w-4 h-4" /> Sample CSV
-                        </Button>
-                        <div className="relative">
-                          <Button type="button" variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100 gap-2 pointer-events-none">
-                            <ArrowLeft className="w-4 h-4 rotate-90" /> Import CSV
-                          </Button>
-                          <Input
-                            type="file"
-                            accept=".csv"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
+                      <div className="flex items-center gap-2 mt-2">
+                        <Label className="text-xs whitespace-nowrap">Max Comments/Project:</Label>
+                        <Input type="number" min="0" value={editForm.presentationConfig?.maxCommentsPerProject ?? 0} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, maxCommentsPerProject: Number(e.target.value) } }))} className="w-20 h-7 text-xs bg-white" placeholder="0=Inf" />
+                      </div>
+
+                      <div className="h-px bg-slate-200 my-2" />
+
+                      <div className="flex flex-wrap gap-x-4 gap-y-2">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
+                          <input type="checkbox" checked={editForm.submissionConfig.includeSourceCode} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeSourceCode: e.target.checked } }))} className="rounded" />
+                          Source Code
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
+                          <input type="checkbox" checked={editForm.submissionConfig.includeThumbnail} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeThumbnail: e.target.checked } }))} className="rounded" />
+                          Thumbnail
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
+                          <input type="checkbox" checked={editForm.submissionConfig.includeMaterials} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeMaterials: e.target.checked } }))} className="rounded" />
+                          Materials
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-blue-600 font-medium bg-blue-50 px-2 rounded-full">
+                          <input type="checkbox" checked={editForm.submissionConfig.includeGroupName} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeGroupName: e.target.checked } }))} className="rounded" />
+                          Group Name
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Right: Presentation Timings */}
+                    <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                      <h3 className="text-xs font-bold text-slate-800 uppercase mb-2 flex items-center gap-2">
+                        <Clock className="w-3 h-3" /> Timings (Minutes)
+                      </h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase">Per Project</Label>
+                          <Input type="number" min="1" value={editForm.presentationConfig?.durationPerProject || 10} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, durationPerProject: Number(e.target.value) } }))} className="bg-white h-8" />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase">Q&A</Label>
+                          <Input type="number" min="0" value={editForm.presentationConfig?.questionDuration || 5} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, questionDuration: Number(e.target.value) } }))} className="bg-white h-8" />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-slate-500 uppercase">Break</Label>
+                          <Input type="number" min="0" value={editForm.presentationConfig?.breakDuration || 2} onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, breakDuration: Number(e.target.value) } }))} className="bg-white h-8" />
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="flex justify-between items-center mb-1">
+                          <Label className="text-[10px] font-bold text-slate-500 uppercase">Req. Resources</Label>
+                          <Button type="button" size="sm" variant="ghost" className="h-5 text-[10px] text-blue-600" onClick={() => setEditForm(p => ({ ...p, resourceRequirements: [...(p.resourceRequirements || []), { label: '', type: 'url' }] }))}>+ Add</Button>
+                        </div>
+                        <div className="space-y-1 max-h-[100px] overflow-y-auto">
+                          {editForm.resourceRequirements?.map((req, idx) => (
+                            <div key={idx} className="flex gap-1">
+                              <Input value={req.label} onChange={(e) => { const newReqs = [...editForm.resourceRequirements]; newReqs[idx].label = e.target.value; setEditForm(p => ({ ...p, resourceRequirements: newReqs })); }} className="h-7 text-xs bg-white" placeholder="Label" />
+                              <select value={req.type} onChange={(e) => { const newReqs = [...editForm.resourceRequirements]; newReqs[idx].type = e.target.value; setEditForm(p => ({ ...p, resourceRequirements: newReqs })); }} className="h-7 w-20 text-[10px] rounded border bg-white px-1">
+                                <option value="url">Link</option><option value="pdf">PDF</option><option value="image">Img</option><option value="video">Vid</option>
+                              </select>
+                              <button type="button" className="text-red-400 hover:text-red-600 px-1" onClick={() => { const newReqs = editForm.resourceRequirements.filter((_, i) => i !== idx); setEditForm(p => ({ ...p, resourceRequirements: newReqs })); }}>&times;</button>
+                            </div>
+                          ))}
+                          {!editForm.resourceRequirements?.length && <p className="text-[10px] text-slate-400 italic">No resources required.</p>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="scoring" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="pt-2">
+                    <EvaluationEditor
+                      title="Scoring Method (Survey)"
+                      questions={editForm.presentationConfig?.surveyQuestions || []}
+                      onChange={(newQs) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs, gradingType: 'survey' } }))}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="targeted" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="pt-2">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="font-semibold text-slate-800">Targeted Evaluation (Special Accounts)</h3>
+                        <p className="text-xs text-slate-500">Enable a separate survey for specific evaluators (judges, teachers).</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={editForm.presentationConfig?.specialEvaluationConfig?.enabled || false}
+                          onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, specialEvaluationConfig: { ...(p.presentationConfig?.specialEvaluationConfig || {}), enabled: e.target.checked } } }))}
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                      </label>
+                    </div>
+
+                    {editForm.presentationConfig?.specialEvaluationConfig?.enabled && (
+                      <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-4 animate-in slide-in-from-top-2">
+                        <div>
+                          <Label className="text-indigo-800 font-bold mb-1 block">Authorized Evaluators</Label>
+                          <p className="text-xs text-slate-500 mb-2">Enter email addresses separated by commas.</p>
+                          <textarea
+                            className="w-full rounded-lg border-slate-300 p-3 text-sm focus:ring-indigo-500 font-mono"
+                            rows={3}
+                            placeholder="judge1@university.edu, teacher2@school.com"
+                            value={editForm.presentationConfig?.specialEvaluationConfig?.evaluatorEmails?.join(', ') || ''}
                             onChange={(e) => {
-                              const file = e.target.files[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = (evt) => {
-                                const lines = evt.target.result.split('\n').filter(l => l.trim());
-                                if (lines.length < 2) return alert('Invalid CSV');
-
-                                const newQuestions = [];
-                                // Skip header
-                                for (let i = 1; i < lines.length; i++) {
-                                  // Detailed CSV Parsing to handle quotes and commas inside fields
-                                  const parseCSVLine = (str) => {
-                                    const res = [];
-                                    let current = "";
-                                    let inQuote = false;
-                                    for (let c = 0; c < str.length; c++) {
-                                      const char = str[c];
-                                      if (char === '"' && str[c + 1] === '"') { current += '"'; c++; continue; } // Double quote escape
-                                      if (char === '"') { inQuote = !inQuote; continue; }
-                                      if (char === ',' && !inQuote) { res.push(current.trim()); current = ""; continue; }
-                                      current += char;
-                                    }
-                                    res.push(current.trim());
-                                    return res;
-                                  };
-
-                                  const parts = parseCSVLine(lines[i]);
-                                  const type = parts[0]?.toLowerCase() || 'choice';
-                                  const question = parts[1];
-                                  const configStr = parts[2];
-
-                                  if (!question) continue;
-
-                                  const qObj = { type: type, question };
-
-                                  if (type === 'choice') {
-                                    qObj.options = configStr ? configStr.split(';').map(opt => {
-                                      const [label, score] = opt.split(':');
-                                      return { label: label || 'Option', score: Number(score) || 0 };
-                                    }) : [];
-                                  } else if (type === 'scale' || type === 'rating') {
-                                    const [min, max, minLabel, maxLabel] = configStr ? configStr.split(';') : [1, 5, 'Poor', 'Excellent'];
-                                    qObj.scaleConfig = {
-                                      min: Number(min) || 1,
-                                      max: Number(max) || 5,
-                                      minLabel: minLabel || 'Poor',
-                                      maxLabel: maxLabel || 'Excellent'
-                                    };
-                                  } else if (type === 'text') {
-                                    qObj.textConfig = { maxScore: Number(configStr) || 0 };
-                                  }
-                                  newQuestions.push(qObj);
-                                }
-
-
-
-                                setConfirmModal({
-                                  isOpen: true,
-                                  message: `Import ${newQuestions.length} questions? This will append to existing questions.`,
-                                  onConfirm: () => {
-                                    setEditForm(p => ({
-                                      ...p,
-                                      presentationConfig: {
-                                        ...p.presentationConfig,
-                                        surveyQuestions: [...(p.presentationConfig.surveyQuestions || []), ...newQuestions]
-                                      }
-                                    }));
-                                    setConfirmModal({ isOpen: false, message: '', onConfirm: null });
-                                  }
-                                });
-                                e.target.value = null; // Reset
-                              };
-                              reader.readAsText(file);
+                              const emails = e.target.value.split(',').map(s => s.trim());
+                              setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, specialEvaluationConfig: { ...(p.presentationConfig?.specialEvaluationConfig || {}), evaluatorEmails: emails } } }))
                             }}
                           />
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* RUBRIC EDITOR */
-                  <div className="space-y-3 bg-slate-50 p-3 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <Label className="font-medium text-slate-600">Grading Rubric (Sliders)</Label>
-                      <Button type="button" size="sm" variant="outline" onClick={() => setEditForm(p => ({ ...p, presentationConfig: { ...(p.presentationConfig || {}), gradingRubric: [...(p.presentationConfig?.gradingRubric || []), { label: '', maxScore: 10 }] } }))}>+ Add Criteria</Button>
-                    </div>
-                    {editForm.presentationConfig?.gradingRubric?.map((criteria, idx) => (
-                      <div key={idx} className="flex gap-2 items-center">
-                        <Input value={criteria.label} onChange={(e) => {
-                          const newRubric = [...editForm.presentationConfig.gradingRubric]; newRubric[idx].label = e.target.value;
-                          setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, gradingRubric: newRubric } }));
-                        }} className="flex-1 bg-white" placeholder="Criteria (e.g. Creativity)" />
 
-                        <div className="w-24 relative">
-                          <span className="absolute right-8 top-2 text-xs text-slate-400">/</span>
-                          <Input type="number" value={criteria.maxScore} onChange={(e) => {
-                            const newRubric = [...editForm.presentationConfig.gradingRubric]; newRubric[idx].maxScore = Number(e.target.value);
-                            setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, gradingRubric: newRubric } }));
-                          }} className="bg-white" placeholder="Max" />
+                        <div>
+                          <EvaluationEditor
+                            title="Special Survey Questions"
+                            questions={editForm.presentationConfig?.specialEvaluationConfig?.surveyQuestions || []}
+                            onChange={(newQs) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, specialEvaluationConfig: { ...(p.presentationConfig?.specialEvaluationConfig || {}), surveyQuestions: newQs } } }))}
+                          />
                         </div>
-
-                        <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-600" onClick={() => {
-                          const newRubric = editForm.presentationConfig.gradingRubric.filter((_, i) => i !== idx);
-                          setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, gradingRubric: newRubric } }));
-                        }}>&times;</Button>
                       </div>
-                    ))}
-                    {!editForm.presentationConfig?.gradingRubric?.length && <p className="text-sm text-slate-400 italic text-center">No grading criteria set.</p>}
+                    )}
                   </div>
-                )}
-              </div>
-              <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">Save Changes</Button>
+                </TabsContent>
+              </Tabs>
+              <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto mt-4">Save Changes</Button>
             </form>
           </section >
         )
