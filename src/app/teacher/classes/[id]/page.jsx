@@ -14,6 +14,8 @@ export default function ClassDetailPage() {
     const [classData, setClassData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [importing, setImporting] = useState(false);
+    const [importProgress, setImportProgress] = useState(0); // 0 to 100
+    const [resendingId, setResendingId] = useState(null);
 
     // CSV State
     const [csvFile, setCsvFile] = useState(null);
@@ -52,13 +54,15 @@ export default function ClassDetailPage() {
     const handleImport = async () => {
         if (!csvFile) return;
         setImporting(true);
+        setImportProgress(10); // Start
         setImportResult(null);
 
         Papa.parse(csvFile, {
             header: false,
             skipEmptyLines: true,
-            encoding: "UTF-8", // ← force UTF-8
+            encoding: "UTF-8",
             complete: async (results) => {
+                setImportProgress(30); // Parsed
                 const lines = results.data;
 
                 if (!lines || lines.length === 0) {
@@ -77,7 +81,7 @@ export default function ClassDetailPage() {
                     if (cols.length >= 3) {
                         students.push({
                             studentId: cols[0]?.trim(),
-                            name: cols[1]?.trim(),   // ✅ Vietnamese preserved
+                            name: cols[1]?.trim(),
                             email: cols[2]?.trim(),
                             birthday: cols[3]?.trim() || null,
                         });
@@ -90,22 +94,34 @@ export default function ClassDetailPage() {
                     return;
                 }
 
+                setImportProgress(50); // Sending to server
+
                 try {
+                    // We could split into chunks to update progress more granularly
+                    // For now, just send all
                     const res = await fetch(`/api/teacher/classes/${params.id}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ students }),
                     });
+
+                    setImportProgress(90); // Received response
+
                     const data = await res.json();
                     setImportResult(data);
                     if (data.success) {
                         fetchClassData();
                         setCsvFile(null);
+                        setImportProgress(100);
+                    } else {
+                        setImportProgress(0);
                     }
                 } catch (err) {
                     setImportResult({ error: err.message });
+                    setImportProgress(0);
                 } finally {
                     setImporting(false);
+                    setTimeout(() => setImportProgress(0), 2000); // Reset after 2s
                 }
             },
             error: (error) => {
@@ -113,6 +129,31 @@ export default function ClassDetailPage() {
                 setImporting(false);
             },
         });
+    };
+
+    const handleResendEmail = async (student) => {
+        if (!confirm(`Are you sure you want to reset password and resend email to ${student.name}?`)) return;
+
+        setResendingId(student._id);
+        try {
+            const res = await fetch('/api/teacher/users/resend-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: student._id, classId: params.id })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Email sent successfully!');
+                fetchClassData(); // Refresh to update status icon
+            } else {
+                alert(data.error || 'Failed to send email');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error sending email');
+        } finally {
+            setResendingId(null);
+        }
     };
 
 
@@ -159,10 +200,36 @@ export default function ClassDetailPage() {
                                         </thead>
                                         <tbody>
                                             {classData.students.map(s => (
-                                                <tr key={s._id} className="border-b last:border-0 hover:bg-gray-50">
+                                                <tr key={s._id} className="border-b last:border-0 hover:bg-gray-50 group">
                                                     <td className="p-3 font-mono text-gray-600">{s.studentId || '-'}</td>
                                                     <td className="p-3 font-medium">{s.name}</td>
-                                                    <td className="p-3 text-gray-500">{s.email}</td>
+                                                    <td className="p-3 text-gray-500">
+                                                        <div className="flex items-center gap-2">
+                                                            {s.email}
+                                                            {s.accountCreationEmailSent ? (
+                                                                <span title="Email sent" className="text-green-500">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle-2"><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></svg>
+                                                                </span>
+                                                            ) : (
+                                                                <span title="Email not sent" className="text-amber-500">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3 text-right">
+                                                        {!s.accountCreationEmailSent && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="xs"
+                                                                className="h-7 text-xs"
+                                                                onClick={() => handleResendEmail(s)}
+                                                                disabled={resendingId === s._id}
+                                                            >
+                                                                {resendingId === s._id ? 'Sending...' : 'Resend Email'}
+                                                            </Button>
+                                                        )}
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -189,8 +256,14 @@ export default function ClassDetailPage() {
 
 
 
+                            {importing && (
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                                    <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${importProgress}%` }}></div>
+                                </div>
+                            )}
+
                             <Button className="w-full" onClick={handleImport} disabled={!csvFile || importing}>
-                                {importing ? 'Importing...' : 'Upload & Import'}
+                                {importing ? `Importing... ${importProgress}%` : 'Upload & Import'}
                             </Button>
 
                             {importResult && (

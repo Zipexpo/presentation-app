@@ -6,6 +6,8 @@ import Class from '@/models/Class';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function GET(request, { params }) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'teacher') {
@@ -15,7 +17,7 @@ export async function GET(request, { params }) {
     await connectToDB();
     const { id } = await params;
     const classData = await Class.findOne({ _id: id, teacherId: session.user.id })
-        .populate('students', 'name email studentId');
+        .populate('students', 'name email studentId accountCreationEmailSent');
 
     if (!classData) {
         return NextResponse.json({ error: 'Class not found' }, { status: 404 });
@@ -24,7 +26,6 @@ export async function GET(request, { params }) {
     return NextResponse.json(classData);
 }
 
-// Import Students (CSV)
 // Import Students (CSV)
 export async function POST(request, { params }) {
     const session = await getServerSession(authOptions);
@@ -96,14 +97,22 @@ export async function POST(request, { params }) {
                         role: 'student',
                         profileCompleted: true,
                         mustChangePassword: true,
-                        emailVerified: true // Auto-verify imported students
+                        emailVerified: true, // Auto-verify imported students
+                        accountCreationEmailSent: false // Default to false
                     });
+
+                    // Add delay to prevent rate limiting (2 req/sec -> 500ms+ delay)
+                    await delay(600);
 
                     // Send Email
                     const emailResult = await sendAccountCreationEmail(email, student.name, rawPassword, session.user.name);
-                    if (!emailResult.success) {
+
+                    if (emailResult.success) {
+                        user.accountCreationEmailSent = true;
+                        await user.save();
+                    } else {
                         console.error(`Failed to send email to ${email}: ${emailResult.error}`);
-                        // Don't fail the import, just log
+                        // Don't fail the import, just log, user will see status in UI
                     }
 
                 } catch (createErr) {
@@ -135,6 +144,38 @@ export async function POST(request, { params }) {
 
     } catch (error) {
         console.error('Import error:', error);
+        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    }
+}
+
+export async function PUT(request, { params }) {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'teacher') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const { name } = await request.json();
+        if (!name || !name.trim()) {
+            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+        }
+
+        await connectToDB();
+        const { id } = await params;
+
+        const updatedClass = await Class.findOneAndUpdate(
+            { _id: id, teacherId: session.user.id },
+            { name: name.trim() },
+            { new: true }
+        );
+
+        if (!updatedClass) {
+            return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(updatedClass);
+    } catch (error) {
+        console.error('Update class error:', error);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }
