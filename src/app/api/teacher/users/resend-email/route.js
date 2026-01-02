@@ -34,24 +34,12 @@ export async function POST(request) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // Generate a new temporary password? Or just send notification?
-        // Since we can't retrieve the hashed password, we might need to reset it 
-        // OR just send a link to reset password.
-        // BUT the requirements for Import was to send the credentials.
-        // If we "Resend", we technically can't send the OLD password.
+        // Generate a new temporary password
+        // Always allow resending, even if profile is completed.
+        // This acts as a manual password reset by the teacher.
+
         // We must generate a NEW temp password.
-
         let newTempPassword = `p!${user.studentId || Math.random().toString(36).slice(-6)}new`;
-        // Optimization: Try to keep it consistent if possible, but we can't.
-        // Let's generate a secure random one.
-
-        // Actually, if we reset the password, the user might be confused if they successfully logged in before?
-        // Check if profileCompleted is true. If so, they might have changed it.
-        // If profileCompleted is false, they likely never logged in.
-
-        if (user.profileCompleted) {
-            return NextResponse.json({ error: 'User has already completed profile. Cannot resend initial credentials.' }, { status: 400 });
-        }
 
         // Update password
         const hashedPassword = await bcrypt.hash(newTempPassword, 10);
