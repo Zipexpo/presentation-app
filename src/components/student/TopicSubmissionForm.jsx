@@ -392,7 +392,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                         <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-4">
                             <div className="flex flex-col items-center gap-1">
                                 <ImageIcon className="w-12 h-12 opacity-30" />
-                                <span className="text-sm font-medium opacity-70">Add Cover Image</span>
+                                <span className="text-sm font-medium opacity-70">{config.labels?.thumbnail || 'Add Cover Image'}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Button
@@ -434,7 +434,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                     <div className="flex flex-wrap gap-4 items-center justify-between">
                         {/* Group Badge / Number */}
                         <div className="flex items-center gap-2 text-indigo-600 font-semibold tracking-wide uppercase text-xs sm:text-sm bg-indigo-50 px-3 py-1 rounded-full">
-                            <span className="whitespace-nowrap">Group</span>
+                            <span className="whitespace-nowrap">{config.labels?.groupName || 'Group'}</span>
                             <Input
                                 id="groupNumber" name="groupNumber" type="number"
                                 className="w-12 h-auto py-0 px-1 border-none bg-transparent hover:bg-white focus:bg-white text-indigo-700 font-bold focus-visible:ring-0 p-0 rounded text-center"
@@ -658,41 +658,6 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                 </div>
                             )}
 
-                            {/* Thumbnail not present here? Wait, let's check the context I have for this chunk. */}
-                            {config.includeThumbnail && (
-                                <div>
-                                    <Label htmlFor="thumbnailUrl" className="block text-gray-600 mb-1.5">{config.labels?.thumbnail || 'Project Thumbnail URL'}</Label>
-                                    <div className="flex gap-2 items-center">
-                                        <div className="relative flex-1">
-                                            <Input
-                                                id="thumbnailUrl" name="thumbnailUrl"
-                                                value={form.thumbnailUrl} onChange={handleChange}
-                                                placeholder="https://.../image.png"
-                                                className="pl-9"
-                                            />
-                                            <ImageIcon className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                                        </div>
-                                        {form.thumbnailUrl && <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 border border-gray-200"><img src={form.thumbnailUrl} className="w-full h-full object-cover" /></div>}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Additional Materials */}
-                            {config.includeMaterials && (
-                                <div>
-                                    <Label htmlFor="materialsLink" className="block text-gray-600 mb-1.5">{config.labels?.materials || 'Additional Materials / Documentation'}</Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="materialsLink" name="materialsLink"
-                                            value={form.materialsLink} onChange={handleChange}
-                                            placeholder="https://drive.google.com/..."
-                                            className="pl-9"
-                                        />
-                                        <FileText className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Dynamic Resource Inputs */}
                             {topicConfig?.resourceRequirements?.map((req, idx) => {
                                 const resourceValue = form.resources.find(r => r.label === req.label)?.url || '';
@@ -810,7 +775,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                         <section className="space-y-3">
                             <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                                 <span className="w-1 h-6 bg-yellow-500 rounded-full inline-block"></span>
-                                Additional Materials
+                                {config.labels?.materials || 'Additional Materials'}
                             </h3>
                             <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                                 {additionalMaterials.map((mat, idx) => (
