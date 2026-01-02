@@ -626,7 +626,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                             {config.includeSourceCode && (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center mb-1">
-                                        <Label htmlFor="sourceCodeLink">Source Code (GitHub/GitLab)</Label>
+                                        <Label htmlFor="sourceCodeLink">{config.labels?.sourceCode || 'Source Code (GitHub/GitLab)'}</Label>
                                         <div className="flex items-center gap-2">
                                             {form.sourceCodeLink && getLinkType(form.sourceCodeLink) && (
                                                 <LinkBadge type={getLinkType(form.sourceCodeLink)} />
@@ -654,6 +654,41 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                 <ExternalLink className="w-5 h-5" />
                                             </Button>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Thumbnail not present here? Wait, let's check the context I have for this chunk. */}
+                            {config.includeThumbnail && (
+                                <div>
+                                    <Label htmlFor="thumbnailUrl" className="block text-gray-600 mb-1.5">{config.labels?.thumbnail || 'Project Thumbnail URL'}</Label>
+                                    <div className="flex gap-2 items-center">
+                                        <div className="relative flex-1">
+                                            <Input
+                                                id="thumbnailUrl" name="thumbnailUrl"
+                                                value={form.thumbnailUrl} onChange={handleChange}
+                                                placeholder="https://.../image.png"
+                                                className="pl-9"
+                                            />
+                                            <ImageIcon className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                                        </div>
+                                        {form.thumbnailUrl && <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 border border-gray-200"><img src={form.thumbnailUrl} className="w-full h-full object-cover" /></div>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Additional Materials */}
+                            {config.includeMaterials && (
+                                <div>
+                                    <Label htmlFor="materialsLink" className="block text-gray-600 mb-1.5">{config.labels?.materials || 'Additional Materials / Documentation'}</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="materialsLink" name="materialsLink"
+                                            value={form.materialsLink} onChange={handleChange}
+                                            placeholder="https://drive.google.com/..."
+                                            className="pl-9"
+                                        />
+                                        <FileText className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                                     </div>
                                 </div>
                             )}
@@ -708,7 +743,8 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                 {req.type === 'video' ? <Video className="w-4 h-4 absolute left-3 top-3 text-gray-400" /> :
                                                     req.type === 'image' ? <ImageIcon className="w-4 h-4 absolute left-3 top-3 text-gray-400" /> :
                                                         (req.type === 'pdf' || req.type === 'doc') ? <FileText className="w-4 h-4 absolute left-3 top-3 text-gray-400" /> :
-                                                            <LinkIcon className="w-4 h-4 absolute left-3 top-3 text-gray-400" />}
+                                                            req.type === 'presentation' ? <Presentation className="w-4 h-4 absolute left-3 top-3 text-amber-500" /> :
+                                                                <LinkIcon className="w-4 h-4 absolute left-3 top-3 text-gray-400" />}
                                             </div>
 
                                             {/* Preview Button (Right of Input) */}
