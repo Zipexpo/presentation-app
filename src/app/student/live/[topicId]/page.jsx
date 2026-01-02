@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -59,7 +59,7 @@ export default function StudentLivePage() {
     const prevProjectIdRef = useRef(null)
 
     // Fetch My Reviews
-    const fetchMyReviews = async () => {
+    const fetchMyReviews = useCallback(async () => {
         if (!liveState?.currentProject?._id) return;
         const pid = liveState.currentProject._id;
 
@@ -76,7 +76,7 @@ export default function StudentLivePage() {
                 setMyReviews(data);
             }
         } catch (err) { console.error("Error fetching reviews", err); }
-    };
+    }, [liveState?.currentProject?._id, guestId, status, topicId]);
 
     // Poll for State
     useEffect(() => {
@@ -122,7 +122,7 @@ export default function StudentLivePage() {
     // Fetch reviews when project or identity changes
     useEffect(() => {
         fetchMyReviews();
-    }, [liveState?.currentProject?._id, guestId, status]);
+    }, [liveState?.currentProject?._id, guestId, status, fetchMyReviews]);
 
     // PRE-CALCULATE CONFIG & GROUPS (Must be before early returns)
     let config = liveState?.config;
@@ -289,7 +289,7 @@ export default function StudentLivePage() {
                 <div className="glass-card p-8 max-w-md w-full">
                     <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
                     <h2 className="text-xl font-bold text-slate-800 mb-2">Waiting for Presentation</h2>
-                    <p className="text-slate-500">The teacher hasn't started a project yet. Sit tight!</p>
+                    <p className="text-slate-500">The teacher hasn&apos;t started a project yet. Sit tight!</p>
                 </div>
             </div>
         );
@@ -304,7 +304,7 @@ export default function StudentLivePage() {
                         <Pause className="w-8 h-8 text-yellow-600 fill-yellow-600" />
                     </div>
                     <h2 className="text-xl font-bold text-slate-800 mb-2">Presentation Paused</h2>
-                    <p className="text-slate-500">The presenter has paused the session.<br />Hang tight, we'll be back shortly!</p>
+                    <p className="text-slate-500">The presenter has paused the session.<br />Hang tight, we&apos;ll be back shortly!</p>
                 </div>
             </div>
         );
