@@ -50,10 +50,21 @@ const topicSchema = new mongoose.Schema({
     includeThumbnail: { type: Boolean, default: false },
     includeMaterials: { type: Boolean, default: false },
     includeGroupName: { type: Boolean, default: false },
+    includeVideo: { type: Boolean, default: true },
+    includePresentation: { type: Boolean, default: true },
+    labels: {
+      sourceCode: { type: String, default: 'Source Code' },
+      thumbnail: { type: String, default: 'Thumbnail' },
+      materials: { type: String, default: 'Additional Materials' },
+      groupName: { type: String, default: 'Group Name' },
+      video: { type: String, default: 'Demo Video' },
+      presentation: { type: String, default: 'Presentation Slides' }
+    }
   },
   resourceRequirements: [{
     label: { type: String, required: true },
-    type: { type: String, enum: ['url', 'pdf', 'image', 'video'], default: 'url' }
+    type: { type: String, enum: ['url', 'pdf', 'image', 'video', 'presentation'], default: 'url' },
+    optional: { type: Boolean, default: false }
   }],
   presentationConfig: {
     durationPerProject: { type: Number, default: 10 }, // Minutes

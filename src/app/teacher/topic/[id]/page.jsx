@@ -48,7 +48,11 @@ export default function TopicDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState({
     title: '', description: '', submissionDeadline: '', presentationDate: '',
-    submissionConfig: { includeSourceCode: false, includeThumbnail: false, includeMaterials: false, includeGroupName: false },
+    submissionConfig: {
+      includeSourceCode: false, includeThumbnail: false, includeMaterials: false, includeGroupName: false, includeVideo: true, includePresentation: true,
+      labels: { sourceCode: 'Source Code', thumbnail: 'Thumbnail', materials: 'Additional Materials', groupName: 'Group Name', video: 'Demo Video', presentation: 'Presentation Slides' }
+    },
+    resourceRequirements: [],
     presentationConfig: { durationPerProject: 10, questionDuration: 5, breakDuration: 2, gradingRubric: [], completionMessage: '', defaultResource: 'presentation', gradingType: 'rubric', surveyQuestions: [] },
     classId: ''
   });
@@ -105,7 +109,14 @@ export default function TopicDetailPage() {
             description: dataTopic.topic.description,
             submissionDeadline: dataTopic.topic.submissionDeadline ? new Date(dataTopic.topic.submissionDeadline).toISOString().slice(0, 16) : '',
             presentationDate: dataTopic.topic.presentationDate ? new Date(dataTopic.topic.presentationDate).toISOString().slice(0, 16) : '',
-            submissionConfig: dataTopic.topic.submissionConfig || { includeSourceCode: false, includeThumbnail: false, includeMaterials: false, includeGroupName: false },
+            submissionConfig: {
+              ...{
+                includeSourceCode: false, includeThumbnail: false, includeMaterials: false, includeGroupName: false, includeVideo: true, includePresentation: true,
+                labels: { sourceCode: 'Source Code', thumbnail: 'Thumbnail', materials: 'Additional Materials', groupName: 'Group Name', video: 'Demo Video', presentation: 'Presentation Slides' }
+              },
+              ...(dataTopic.topic.submissionConfig || {})
+            },
+            resourceRequirements: dataTopic.topic.resourceRequirements || [],
             presentationConfig: presConfig,
             classId: dataTopic.topic.classId || ''
           });
@@ -329,22 +340,61 @@ export default function TopicDetailPage() {
                       <div className="h-px bg-slate-200 my-2" />
 
                       <div className="flex flex-wrap gap-x-4 gap-y-2">
-                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
-                          <input type="checkbox" checked={editForm.submissionConfig.includeSourceCode} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeSourceCode: e.target.checked } }))} className="rounded" />
-                          Source Code
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
-                          <input type="checkbox" checked={editForm.submissionConfig.includeThumbnail} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeThumbnail: e.target.checked } }))} className="rounded" />
-                          Thumbnail
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600">
-                          <input type="checkbox" checked={editForm.submissionConfig.includeMaterials} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeMaterials: e.target.checked } }))} className="rounded" />
-                          Materials
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer text-sm text-blue-600 font-medium bg-blue-50 px-2 rounded-full">
-                          <input type="checkbox" checked={editForm.submissionConfig.includeGroupName} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeGroupName: e.target.checked } }))} className="rounded" />
-                          Group Name
-                        </label>
+                        {/* Source Code */}
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600 min-w-[140px]">
+                            <input type="checkbox" checked={editForm.submissionConfig.includeSourceCode} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeSourceCode: e.target.checked } }))} className="rounded" />
+                            Source Code
+                          </label>
+                          <Input className="h-6 text-xs w-[120px] bg-white" placeholder="Label" value={editForm.submissionConfig.labels?.sourceCode || 'Source Code'} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, labels: { ...p.submissionConfig.labels, sourceCode: e.target.value } } }))} />
+                        </div>
+
+                        {/* Thumbnail */}
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600 min-w-[140px]">
+                            <input type="checkbox" checked={editForm.submissionConfig.includeThumbnail} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeThumbnail: e.target.checked } }))} className="rounded" />
+                            Thumbnail
+                          </label>
+                          <Input className="h-6 text-xs w-[120px] bg-white" placeholder="Label" value={editForm.submissionConfig.labels?.thumbnail || 'Thumbnail'} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, labels: { ...p.submissionConfig.labels, thumbnail: e.target.value } } }))} />
+                        </div>
+
+                        {/* Materials */}
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600 min-w-[140px]">
+                            <input type="checkbox" checked={editForm.submissionConfig.includeMaterials} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeMaterials: e.target.checked } }))} className="rounded" />
+                            Materials
+                          </label>
+                          <Input className="h-6 text-xs w-[120px] bg-white" placeholder="Label" value={editForm.submissionConfig.labels?.materials || 'Additional Materials'} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, labels: { ...p.submissionConfig.labels, materials: e.target.value } } }))} />
+                        </div>
+
+                        {/* Group Name */}
+                        <div className="flex items-center gap-2 bg-blue-50 py-1 px-2 rounded-lg -ml-2 w-fit">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm text-blue-600 font-medium min-w-[132px]">
+                            <input type="checkbox" checked={editForm.submissionConfig.includeGroupName} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeGroupName: e.target.checked } }))} className="rounded" />
+                            Group Name
+                          </label>
+                          <Input className="h-6 text-xs w-[120px] bg-white border-blue-200 text-blue-800" placeholder="Label" value={editForm.submissionConfig.labels?.groupName || 'Group Name'} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, labels: { ...p.submissionConfig.labels, groupName: e.target.value } } }))} />
+                        </div>
+
+                        <div className="w-full h-px bg-slate-200/50 my-1" />
+
+                        {/* Video */}
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600 min-w-[140px]">
+                            <input type="checkbox" checked={editForm.submissionConfig.includeVideo !== false} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includeVideo: e.target.checked } }))} className="rounded" />
+                            Demo Video
+                          </label>
+                          <Input className="h-6 text-xs w-[120px] bg-white" placeholder="Label" value={editForm.submissionConfig.labels?.video || 'Demo Video'} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, labels: { ...p.submissionConfig.labels, video: e.target.value } } }))} />
+                        </div>
+
+                        {/* Presentation */}
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm text-slate-600 min-w-[140px]">
+                            <input type="checkbox" checked={editForm.submissionConfig.includePresentation !== false} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, includePresentation: e.target.checked } }))} className="rounded" />
+                            Presentation Slides
+                          </label>
+                          <Input className="h-6 text-xs w-[120px] bg-white" placeholder="Label" value={editForm.submissionConfig.labels?.presentation || 'Presentation Slides'} onChange={(e) => setEditForm(p => ({ ...p, submissionConfig: { ...p.submissionConfig, labels: { ...p.submissionConfig.labels, presentation: e.target.value } } }))} />
+                        </div>
                       </div>
                     </div>
 
@@ -378,8 +428,12 @@ export default function TopicDetailPage() {
                             <div key={idx} className="flex gap-1">
                               <Input value={req.label} onChange={(e) => { const newReqs = [...editForm.resourceRequirements]; newReqs[idx].label = e.target.value; setEditForm(p => ({ ...p, resourceRequirements: newReqs })); }} className="h-7 text-xs bg-white" placeholder="Label" />
                               <select value={req.type} onChange={(e) => { const newReqs = [...editForm.resourceRequirements]; newReqs[idx].type = e.target.value; setEditForm(p => ({ ...p, resourceRequirements: newReqs })); }} className="h-7 w-20 text-[10px] rounded border bg-white px-1">
-                                <option value="url">Link</option><option value="pdf">PDF</option><option value="image">Img</option><option value="video">Vid</option>
+                                <option value="url">Link</option><option value="pdf">PDF</option><option value="image">Img</option><option value="video">Vid</option><option value="presentation">Pres.</option>
                               </select>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input type="checkbox" checked={req.optional || false} onChange={(e) => { const newReqs = [...editForm.resourceRequirements]; newReqs[idx].optional = e.target.checked; setEditForm(p => ({ ...p, resourceRequirements: newReqs })); }} className="w-3 h-3 rounded text-blue-600" />
+                                <span className="text-[10px] text-slate-500">Opt</span>
+                              </label>
                               <button type="button" className="text-red-400 hover:text-red-600 px-1" onClick={() => { const newReqs = editForm.resourceRequirements.filter((_, i) => i !== idx); setEditForm(p => ({ ...p, resourceRequirements: newReqs })); }}>&times;</button>
                             </div>
                           ))}
@@ -478,6 +532,28 @@ export default function TopicDetailPage() {
           <div>
             {getCountdown(topic.presentationDate)}
           </div>
+        </div>
+      </div>
+
+      {/* Resources Info */}
+      <div className="glass-card p-4 md:p-6">
+        <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+          <FileText className="w-4 h-4" /> Required Resources
+        </h3>
+        <div className="flex flex-wrap gap-3">
+          {topic.resourceRequirements?.length > 0 ? (
+            topic.resourceRequirements.map((req, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700">
+                <span className={`uppercase text-[10px] font-bold px-1.5 py-0.5 rounded ${req.type === 'video' ? 'bg-red-100 text-red-600' : req.type === 'image' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                  {req.type}
+                </span>
+                <span className="font-medium">{req.label}</span>
+                {req.optional && <span className="text-[10px] text-slate-400 bg-white border border-slate-100 px-1 rounded ml-1">Optional</span>}
+              </div>
+            ))
+          ) : (
+            <p className="text-slate-400 italic text-sm">No specific resources required.</p>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDB } from '@/lib/db';
 import Topic from '@/models/Topic';
 
@@ -35,29 +35,34 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { title, description, submissionDeadline, presentationDate, submissionConfig, classId } =
-    await request.json();
+  try {
+    const { title, description, submissionDeadline, presentationDate, submissionConfig, classId } =
+      await request.json();
 
-  if (!title || !description || !submissionDeadline || !presentationDate) {
-    return NextResponse.json(
-      { error: 'All fields are required' },
-      { status: 400 }
-    );
+    if (!title || !description || !submissionDeadline || !presentationDate) {
+      return NextResponse.json(
+        { error: 'All fields are required' },
+        { status: 400 }
+      );
+    }
+
+    await connectToDB();
+
+    const topic = await Topic.create({
+      title,
+      description,
+      teacherId: session.user.id,
+      submissionDeadline: new Date(submissionDeadline),
+      presentationDate: new Date(presentationDate),
+      submissionConfig: submissionConfig || {},
+      classId: classId || undefined,
+    });
+
+    return NextResponse.json(topic.toObject(), { status: 201 });
+  } catch (error) {
+    console.error('Error creating topic:', error);
+    return NextResponse.json({ error: 'Failed to create topic' }, { status: 500 });
   }
-
-  await connectToDB();
-
-  const topic = await Topic.create({
-    title,
-    description,
-    teacherId: session.user.id,
-    submissionDeadline: new Date(submissionDeadline),
-    presentationDate: new Date(presentationDate),
-    submissionConfig: submissionConfig || {},
-    classId: classId || undefined,
-  });
-
-  return NextResponse.json(topic, { status: 201 });
 }
 
 

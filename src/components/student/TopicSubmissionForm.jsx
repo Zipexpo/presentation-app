@@ -217,6 +217,29 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
         // Reset feedback
         setFeedback({ isOpen: false, type: 'error', title: '', message: '' });
 
+        // Validation for Dynamic Resources
+        const missingResources = [];
+        if (config?.resourceRequirements) {
+            config.resourceRequirements.forEach(req => {
+                if (req.optional) return;
+                const userRes = form.resources.find(r => r.label === req.label);
+                if (!userRes || !userRes.url || !userRes.url.trim()) {
+                    missingResources.push(req.label);
+                }
+            });
+        }
+
+        if (missingResources.length > 0) {
+            setFeedback({
+                isOpen: true,
+                type: 'error',
+                title: 'Missing Requirements',
+                message: `Please provide links for the following required resources: ${missingResources.join(', ')}`
+            });
+            setSubmitting(false);
+            return;
+        }
+
         try {
             const payload = {
                 topicId,
@@ -511,89 +534,93 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
 
                         <div className="space-y-4 max-w-xl">
                             {/* Presentation */}
-                            <div>
-                                <div className="flex justify-between items-center mb-1.5">
-                                    <Label htmlFor="presentationLink" className="block text-gray-600">Presentation Slides</Label>
-                                    <div className="flex items-center gap-2">
-                                        {form.presentationLink && getLinkType(form.presentationLink) && <LinkBadge type={getLinkType(form.presentationLink)} />}
+                            {(config.includePresentation !== false) && (
+                                <div>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <Label htmlFor="presentationLink" className="block text-gray-600">Presentation Slides</Label>
+                                        <div className="flex items-center gap-2">
+                                            {form.presentationLink && getLinkType(form.presentationLink) && <LinkBadge type={getLinkType(form.presentationLink)} />}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex gap-2 items-center">
-                                    <div className="relative flex-1">
-                                        <Input
-                                            id="presentationLink" name="presentationLink"
-                                            value={form.presentationLink} onChange={handleChange}
-                                            placeholder="https://docs.google.com/presentation/..."
-                                            className="pl-9"
-                                        />
-                                        <Presentation className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <div className="relative flex-1">
+                                            <Input
+                                                id="presentationLink" name="presentationLink"
+                                                value={form.presentationLink} onChange={handleChange}
+                                                placeholder="https://docs.google.com/presentation/..."
+                                                className="pl-9"
+                                            />
+                                            <Presentation className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                                        </div>
 
-                                    {form.presentationLink && (
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-                                                    <MonitorPlay className="w-5 h-5" />
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-4xl w-full h-[80vh] p-0 flex flex-col bg-black/90 border-0">
-                                                <DialogHeader className="sr-only">
-                                                    <DialogTitle>Presentation Preview</DialogTitle>
-                                                </DialogHeader>
-                                                <div className="flex-1 w-full overflow-hidden relative">
-                                                    <iframe src={getEmbedUrl(form.presentationLink)} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen title="Preview" />
-                                                </div>
-                                                <div className="p-2 flex justify-center">
-                                                    <a href={form.presentationLink} target="_blank" rel="noopener noreferrer">
-                                                        <Button variant="secondary" size="sm" className="h-8 text-xs gap-2">
-                                                            Open Original <ExternalLink className="w-3 h-3" />
-                                                        </Button>
-                                                    </a>
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
-                                    )}
+                                        {form.presentationLink && (
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                                        <MonitorPlay className="w-5 h-5" />
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-4xl w-full h-[80vh] p-0 flex flex-col bg-black/90 border-0">
+                                                    <DialogHeader className="sr-only">
+                                                        <DialogTitle>Presentation Preview</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="flex-1 w-full overflow-hidden relative">
+                                                        <iframe src={getEmbedUrl(form.presentationLink)} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen title="Preview" />
+                                                    </div>
+                                                    <div className="p-2 flex justify-center">
+                                                        <a href={form.presentationLink} target="_blank" rel="noopener noreferrer">
+                                                            <Button variant="secondary" size="sm" className="h-8 text-xs gap-2">
+                                                                Open Original <ExternalLink className="w-3 h-3" />
+                                                            </Button>
+                                                        </a>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Video */}
-                            <div>
-                                <div className="flex justify-between items-center mb-1.5">
-                                    <Label htmlFor="videoLink" className="block text-gray-600">Demo Video</Label>
-                                    <div className="flex items-center gap-2">
-                                        {form.videoLink && getLinkType(form.videoLink) && <LinkBadge type={getLinkType(form.videoLink)} />}
-                                        {videoTitle && <span className="text-xs text-gray-500 truncate max-w-[200px] bg-gray-100 px-1.5 py-0.5 rounded">{videoTitle}</span>}
+                            {(config.includeVideo !== false) && (
+                                <div>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <Label htmlFor="videoLink" className="block text-gray-600">Demo Video</Label>
+                                        <div className="flex items-center gap-2">
+                                            {form.videoLink && getLinkType(form.videoLink) && <LinkBadge type={getLinkType(form.videoLink)} />}
+                                            {videoTitle && <span className="text-xs text-gray-500 truncate max-w-[200px] bg-gray-100 px-1.5 py-0.5 rounded">{videoTitle}</span>}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <div className="relative flex-1">
+                                            <Input
+                                                id="videoLink" name="videoLink"
+                                                value={form.videoLink} onChange={handleChange}
+                                                placeholder="https://youtube.com/..."
+                                                className="pl-9"
+                                            />
+                                            <Video className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                                        </div>
+                                        {form.videoLink && (
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                                        <MonitorPlay className="w-5 h-5" />
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-4xl w-full h-[80vh] p-0 flex flex-col bg-black/90 border-0">
+                                                    <DialogHeader className="sr-only">
+                                                        <DialogTitle>Video Preview</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="flex-1 w-full overflow-hidden relative">
+                                                        <iframe src={getEmbedUrl(form.videoLink)} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen title="Preview" />
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex gap-2 items-center">
-                                    <div className="relative flex-1">
-                                        <Input
-                                            id="videoLink" name="videoLink"
-                                            value={form.videoLink} onChange={handleChange}
-                                            placeholder="https://youtube.com/..."
-                                            className="pl-9"
-                                        />
-                                        <Video className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                                    </div>
-                                    {form.videoLink && (
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-                                                    <MonitorPlay className="w-5 h-5" />
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-4xl w-full h-[80vh] p-0 flex flex-col bg-black/90 border-0">
-                                                <DialogHeader className="sr-only">
-                                                    <DialogTitle>Video Preview</DialogTitle>
-                                                </DialogHeader>
-                                                <div className="flex-1 w-full overflow-hidden relative">
-                                                    <iframe src={getEmbedUrl(form.videoLink)} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen title="Preview" />
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
-                                    )}
-                                </div>
-                            </div>
+                            )}
 
                             {/* Source Code */}
                             {config.includeSourceCode && (
@@ -650,7 +677,11 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                 return (
                                     <div key={idx} className="space-y-2">
                                         <div className="flex justify-between items-center mb-1">
-                                            <Label>{req.label} {req.type !== 'url' && <span className="text-xs text-gray-400">({req.type})</span>}</Label>
+                                            <Label>
+                                                {req.label}
+                                                {req.type !== 'url' && <span className="text-xs text-gray-400 font-normal ml-1">({req.type})</span>}
+                                                {req.optional && <span className="text-xs text-slate-400 font-normal italic ml-2">(Optional)</span>}
+                                            </Label>
                                             <div className="flex items-center gap-2">
                                                 {resourceValue && getLinkType(resourceValue) && <LinkBadge type={getLinkType(resourceValue)} />}
                                                 {filename && <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[150px]" title={resourceValue}>{filename}</span>}

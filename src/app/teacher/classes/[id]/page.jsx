@@ -126,7 +126,6 @@ export default function ClassDetailPage() {
                                 totalErrors = [...totalErrors, ...data.errors];
                             }
                         } else {
-                            // If batch fails entirely, add a generic error for these students
                             failedBatches++;
                             totalErrors.push({ error: `Batch ${i + 1} failed: ${data.error || 'Unknown error'}` });
                         }
@@ -135,15 +134,12 @@ export default function ClassDetailPage() {
                         totalErrors.push({ error: `Network error on batch ${i + 1}: ${err.message}` });
                     }
 
-                    // Update progress: 50% start + (50% * percentage done)
                     const percentComplete = 50 + Math.round(((i + 1) / chunks.length) * 50);
                     setImportProgress(percentComplete);
                 }
 
                 setImportResult({
-                    success: failedBatches < chunks.length, // Considered success if at least some worked? Or standard: true if no fatal errors?
-                    // Let's say: success if we added people or tried and got mostly warnings.
-                    // If everything failed, it's false.
+                    success: failedBatches < chunks.length,
                     addedCount: totalAdded,
                     errors: totalErrors
                 });

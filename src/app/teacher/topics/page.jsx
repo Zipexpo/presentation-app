@@ -91,7 +91,8 @@ export default function TeacherTopicsPage() {
         presentationDate: '',
       })
     } catch (err) {
-      setError(err.message)
+      console.error('Error in topic creation:', err);
+      setError(err.message || 'An unexpected error occurred')
     } finally {
       setSaving(false)
     }
