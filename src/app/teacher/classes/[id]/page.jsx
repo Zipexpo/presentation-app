@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import Link from 'next/link';
 import Papa from 'papaparse';
 
@@ -16,6 +18,10 @@ export default function ClassDetailPage() {
     const [importing, setImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0); // 0 to 100
     const [resendingId, setResendingId] = useState(null);
+
+    // UI State
+    const [notification, setNotification] = useState(null); // { type: 'success'|'error', message: '' }
+    const [confirmDialog, setConfirmDialog] = useState({ open: false, student: null });
 
     // CSV State
     const [csvFile, setCsvFile] = useState(null);
@@ -36,6 +42,7 @@ export default function ClassDetailPage() {
             }
         } catch (error) {
             console.error('Failed to fetch class', error);
+            setNotification({ type: 'error', message: 'Failed to fetch class details.' });
         } finally {
             setLoading(false);
         }
@@ -46,10 +53,6 @@ export default function ClassDetailPage() {
             setCsvFile(e.target.files[0]);
         }
     };
-
-
-
-    // ... imports
 
     const handleImport = async () => {
         if (!csvFile) return;
@@ -94,47 +97,91 @@ export default function ClassDetailPage() {
                     return;
                 }
 
-                setImportProgress(50); // Sending to server
+                setImportProgress(50); // Parsed & Ready to send
 
-                try {
-                    // We could split into chunks to update progress more granularly
-                    // For now, just send all
-                    const res = await fetch(`/api/teacher/classes/${params.id}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ students }),
-                    });
-
-                    setImportProgress(90); // Received response
-
-                    const data = await res.json();
-                    setImportResult(data);
-                    if (data.success) {
-                        fetchClassData();
-                        setCsvFile(null);
-                        setImportProgress(100);
-                    } else {
-                        setImportProgress(0);
-                    }
-                } catch (err) {
-                    setImportResult({ error: err.message });
-                    setImportProgress(0);
-                } finally {
-                    setImporting(false);
-                    setTimeout(() => setImportProgress(0), 2000); // Reset after 2s
+                // Chunking to prevent Serverless Timeout (10s)
+                const PREFERRED_BATCH_SIZE = 5;
+                const chunks = [];
+                for (let i = 0; i < students.length; i += PREFERRED_BATCH_SIZE) {
+                    chunks.push(students.slice(i, i + PREFERRED_BATCH_SIZE));
                 }
+
+                let totalAdded = 0;
+                let totalErrors = [];
+                let failedBatches = 0;
+
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunk = chunks[i];
+                    try {
+                        const res = await fetch(`/api/teacher/classes/${params.id}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ students: chunk }),
+                        });
+
+                        const data = await res.json();
+                        if (data.success) {
+                            totalAdded += data.addedCount || 0;
+                            if (data.errors) {
+                                totalErrors = [...totalErrors, ...data.errors];
+                            }
+                        } else {
+                            // If batch fails entirely, add a generic error for these students
+                            failedBatches++;
+                            totalErrors.push({ error: `Batch ${i + 1} failed: ${data.error || 'Unknown error'}` });
+                        }
+                    } catch (err) {
+                        failedBatches++;
+                        totalErrors.push({ error: `Network error on batch ${i + 1}: ${err.message}` });
+                    }
+
+                    // Update progress: 50% start + (50% * percentage done)
+                    const percentComplete = 50 + Math.round(((i + 1) / chunks.length) * 50);
+                    setImportProgress(percentComplete);
+                }
+
+                setImportResult({
+                    success: failedBatches < chunks.length, // Considered success if at least some worked? Or standard: true if no fatal errors?
+                    // Let's say: success if we added people or tried and got mostly warnings.
+                    // If everything failed, it's false.
+                    addedCount: totalAdded,
+                    errors: totalErrors
+                });
+
+                if (totalAdded > 0) {
+                    fetchClassData();
+                    setCsvFile(null);
+                    setNotification({
+                        type: 'success',
+                        message: `Process complete: Imported ${totalAdded} students. ${totalErrors.length > 0 ? `(${totalErrors.length} warnings)` : ''}`
+                    });
+                } else if (totalErrors.length > 0) {
+                    setNotification({ type: 'error', message: 'Import failed for all students.' });
+                }
+
+                setImportProgress(100);
+                setImporting(false);
+                setTimeout(() => setImportProgress(0), 3000);
             },
             error: (error) => {
                 setImportResult({ error: 'Failed to parse CSV: ' + error.message });
                 setImporting(false);
+                setNotification({ type: 'error', message: 'CSV Parse Error: ' + error.message });
             },
         });
     };
 
-    const handleResendEmail = async (student) => {
-        if (!confirm(`Are you sure you want to reset password and resend email to ${student.name}?`)) return;
+    const handleResendEmail = (student) => {
+        setConfirmDialog({ open: true, student });
+    };
 
+    const confirmResend = async () => {
+        const student = confirmDialog.student;
+        if (!student) return;
+
+        setConfirmDialog({ open: false, student: null });
         setResendingId(student._id);
+
         try {
             const res = await fetch('/api/teacher/users/resend-email', {
                 method: 'POST',
@@ -143,19 +190,19 @@ export default function ClassDetailPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                alert('Email sent successfully!');
-                fetchClassData(); // Refresh to update status icon
+                setNotification({ type: 'success', message: `Email sent successfully to ${student.name}!` });
+                fetchClassData(); // Refresh component
             } else {
-                alert(data.error || 'Failed to send email');
+                setNotification({ type: 'error', message: data.error || 'Failed to send email' });
             }
         } catch (error) {
             console.error(error);
-            alert('Error sending email');
+            setNotification({ type: 'error', message: 'Error sending email. Please try again.' });
         } finally {
             setResendingId(null);
+            setTimeout(() => setNotification((prev) => prev?.type === 'success' ? null : prev), 5000);
         }
     };
-
 
     const downloadTemplate = () => {
         const csvContent = "\uFEFFStudent ID,Name,Email,Birthday(DD/MM/YYYY)\nID001,John Doe,john@school.edu,25/12/2000\nID002,Jane Smith,jane@school.edu,";
@@ -181,6 +228,18 @@ export default function ClassDetailPage() {
                 <p className="text-gray-500">Manage students and settings.</p>
             </div>
 
+            {notification && (
+                <div className="mb-6">
+                    <Alert variant={notification.type === 'error' ? 'destructive' : 'default'} className={notification.type === 'success' ? 'border-green-500 text-green-700 bg-green-50' : ''}>
+                        {notification.type === 'success' && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle mr-2"><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></svg>
+                        )}
+                        <AlertTitle>{notification.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
+                        <AlertDescription>{notification.message}</AlertDescription>
+                    </Alert>
+                </div>
+            )}
+
             <div className="grid gap-8 md:grid-cols-3">
                 <div className="md:col-span-2 space-y-6">
                     <Card>
@@ -196,6 +255,7 @@ export default function ClassDetailPage() {
                                                 <th className="p-3 border-b">ID</th>
                                                 <th className="p-3 border-b">Name</th>
                                                 <th className="p-3 border-b">Email</th>
+                                                <th className="p-3 border-b">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -218,17 +278,15 @@ export default function ClassDetailPage() {
                                                         </div>
                                                     </td>
                                                     <td className="p-3 text-right">
-                                                        {!s.accountCreationEmailSent && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="xs"
-                                                                className="h-7 text-xs"
-                                                                onClick={() => handleResendEmail(s)}
-                                                                disabled={resendingId === s._id}
-                                                            >
-                                                                {resendingId === s._id ? 'Sending...' : 'Resend Email'}
-                                                            </Button>
-                                                        )}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="xs"
+                                                            className="h-7 text-xs"
+                                                            onClick={() => handleResendEmail(s)}
+                                                            disabled={resendingId === s._id}
+                                                        >
+                                                            {resendingId === s._id ? 'Sending...' : 'Resend Email'}
+                                                        </Button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -253,8 +311,6 @@ export default function ClassDetailPage() {
                                 <Label>Select CSV File</Label>
                                 <Input type="file" accept=".csv" onChange={handleFileChange} />
                             </div>
-
-
 
                             {importing && (
                                 <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
@@ -296,6 +352,24 @@ export default function ClassDetailPage() {
                     </Card>
                 </div>
             </div>
+
+            {/* Confirmation Dialog */}
+            <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Resend Credientials</DialogTitle>
+                        <DialogDescription>
+                            This will <strong>reset the password</strong> for <strong>{confirmDialog.student?.name}</strong> and send them a new welcome email.
+                            <br /><br />
+                            Are you sure you want to proceed?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmDialog({ open: false, student: null })}>Cancel</Button>
+                        <Button onClick={confirmResend}>Yes, Resend Email</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
