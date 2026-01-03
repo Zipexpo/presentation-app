@@ -14,11 +14,31 @@ export async function GET(request, { params }) {
         await connectToDB();
 
         // Include submissionConfig
-        const topic = await Topic.findById(id, 'title description submissionDeadline presentationDate submissionConfig resourceRequirements classId');
+        const topic = await Topic.findById(id).lean();
 
         if (!topic) {
             return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
         }
+
+        // Apply defaults for submissionConfig and labels if missing (since .lean() doesn't apply schema defaults)
+        if (!topic.submissionConfig) topic.submissionConfig = {};
+
+        // Defaults
+        const defaultLabels = {
+            sourceCode: 'Source Code',
+            thumbnail: 'Thumbnail',
+            materials: 'Additional Materials',
+            groupName: 'Group Name',
+            video: 'Demo Video',
+            presentation: 'Presentation Slides'
+        };
+
+        topic.submissionConfig.labels = { ...defaultLabels, ...(topic.submissionConfig.labels || {}) };
+
+        // Ensure boolean flags have defaults if undefined (schema defaults: true for video/presentation)
+        if (topic.submissionConfig.includeVideo === undefined) topic.submissionConfig.includeVideo = true;
+        if (topic.submissionConfig.includePresentation === undefined) topic.submissionConfig.includePresentation = true;
+
 
         // Check for existing submission if user is logged in
         const session = await getServerSession(authOptions);

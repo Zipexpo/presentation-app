@@ -537,7 +537,9 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                             {(config.includePresentation !== false) && (
                                 <div>
                                     <div className="flex justify-between items-center mb-1.5">
-                                        <Label htmlFor="presentationLink" className="block text-gray-600">Presentation Slides</Label>
+                                        <Label htmlFor="presentationLink" className="block text-gray-600 font-medium">
+                                            {config.labels?.presentation || 'Presentation Slides'}
+                                        </Label>
                                         <div className="flex items-center gap-2">
                                             {form.presentationLink && getLinkType(form.presentationLink) && <LinkBadge type={getLinkType(form.presentationLink)} />}
                                         </div>
@@ -548,7 +550,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                 id="presentationLink" name="presentationLink"
                                                 value={form.presentationLink} onChange={handleChange}
                                                 placeholder="https://docs.google.com/presentation/..."
-                                                className="pl-9"
+                                                className="pl-9 bg-white"
                                             />
                                             <Presentation className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                                         </div>
@@ -585,7 +587,9 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                             {(config.includeVideo !== false) && (
                                 <div>
                                     <div className="flex justify-between items-center mb-1.5">
-                                        <Label htmlFor="videoLink" className="block text-gray-600">Demo Video</Label>
+                                        <Label htmlFor="videoLink" className="block text-gray-600 font-medium">
+                                            {config.labels?.video || 'Demo Video'}
+                                        </Label>
                                         <div className="flex items-center gap-2">
                                             {form.videoLink && getLinkType(form.videoLink) && <LinkBadge type={getLinkType(form.videoLink)} />}
                                             {videoTitle && <span className="text-xs text-gray-500 truncate max-w-[200px] bg-gray-100 px-1.5 py-0.5 rounded">{videoTitle}</span>}
@@ -597,7 +601,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                 id="videoLink" name="videoLink"
                                                 value={form.videoLink} onChange={handleChange}
                                                 placeholder="https://youtube.com/..."
-                                                className="pl-9"
+                                                className="pl-9 bg-white"
                                             />
                                             <Video className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                                         </div>
