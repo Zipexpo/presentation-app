@@ -7,6 +7,12 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export default function TeacherTopicsPage() {
   const { data: session, status } = useSession()
@@ -238,40 +244,69 @@ export default function TeacherTopicsPage() {
           <p className="text-sm text-gray-500">No topics yet.</p>
         ) : (
           <ul className="space-y-3">
-            {topics.map((topic) => (
-              <li
-                key={topic._id}
-                className="border rounded-md p-3 flex flex-col gap-1 hover:bg-gray-50"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold">{topic.title}</div>
-                    <div className="text-sm text-gray-600">
-                      {topic.description}
+            {topics.map((topic) => {
+              const isOwner = topic.teacherId === session.user.id;
+              return (
+                <li
+                  key={topic._id}
+                  className={`border rounded-md p-3 flex flex-col gap-1 hover:bg-gray-50 transition-colors ${!isOwner ? 'bg-blue-50/30 border-blue-100' : ''}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold">{topic.title}</div>
+                        {isOwner ? (
+                          <span className="text-[10px] uppercase font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200">Owner</span>
+                        ) : (
+                          <span className="text-[10px] uppercase font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">Invited</span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {topic.description}
+                      </div>
                     </div>
+                    <Link href={`/teacher/topic/${topic._id}`}>
+                      <Button size="sm" variant={isOwner ? "outline" : "secondary"}>
+                        {isOwner ? 'Manage' : 'View'}
+                      </Button>
+                    </Link>
                   </div>
-                  <Link href={`/teacher/topic/${topic._id}`}>
-                    <Button size="sm" variant="outline">
-                      Manage
-                    </Button>
-                  </Link>
-                </div>
-                <div className="text-xs text-gray-500 flex gap-4 mt-1">
-                  <span>
-                    Submission:{' '}
-                    {topic.submissionDeadline
-                      ? new Date(topic.submissionDeadline).toLocaleString()
-                      : '-'}
-                  </span>
-                  <span>
-                    Presentation:{' '}
-                    {topic.presentationDate
-                      ? new Date(topic.presentationDate).toLocaleString()
-                      : '-'}
-                  </span>
-                </div>
-              </li>
-            ))}
+                  <div className="text-xs text-gray-500 flex flex-wrap gap-4 mt-1 items-center">
+                    <span>
+                      Submission:{' '}
+                      {topic.submissionDeadline
+                        ? new Date(topic.submissionDeadline).toLocaleString()
+                        : '-'}
+                    </span>
+                    <span>
+                      Presentation:{' '}
+                      {topic.presentationDate
+                        ? new Date(topic.presentationDate).toLocaleString()
+                        : '-'}
+                    </span>
+                    {isOwner && topic.invitedTeachers?.length > 0 && (
+                      <TooltipProvider delayDuration={0}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1 text-slate-600 bg-slate-100 px-2 py-0.5 rounded cursor-help transition-colors hover:bg-slate-200">
+                              Shared with {topic.invitedTeachers.length} users
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-slate-900 border-slate-800 text-slate-100 text-xs shadow-xl p-3">
+                            <p className="font-semibold mb-1 text-slate-400">Invited Teachers:</p>
+                            <ul className="list-disc pl-3 space-y-0.5">
+                              {topic.invitedTeachers.map((email, i) => (
+                                <li key={i}>{email}</li>
+                              ))}
+                            </ul>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

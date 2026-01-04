@@ -20,8 +20,13 @@ export async function GET() {
 
   await connectToDB();
   const topics = await Topic.find(
-    { teacherId: session.user.id },
-    'title description submissionDeadline presentationDate createdAt'
+    {
+      $or: [
+        { teacherId: session.user.id },
+        { invitedTeachers: session.user.email }
+      ]
+    },
+    'title description submissionDeadline presentationDate createdAt teacherId invitedTeachers'
   )
     .sort({ createdAt: -1 })
     .lean();

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import FeedbackModal from '@/components/ui/FeedbackModal';
-import { getEmbedUrl, getLinkType, getGoogleDriveDirectLink } from '@/lib/utils';
+import { getEmbedUrl, getLinkType, getGoogleDriveDirectLink, isEmbeddable } from '@/lib/utils';
 
 const PDFPreview = dynamic(() => import('./PDFPreview'), { ssr: false });
 
