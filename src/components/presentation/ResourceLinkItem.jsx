@@ -16,17 +16,18 @@ const ResourceLinkItem = ({
     if (!url) return null;
 
     const linkType = type || getLinkType(url);
-    const embeddable = isEmbeddable(url);
+    const embeddable = isEmbeddable(url, linkType);
 
     // Determine Icon
     let Icon = LinkIcon;
     let iconColor = "text-slate-400";
 
     // Simple mapping for list view icons (distinct from Badge icons)
-    if (linkType === 'GitHub' || linkType === 'GitLab') { Icon = Code; iconColor = "text-green-400"; }
-    else if (linkType === 'Google Drive' || linkType === 'OneDrive' || linkType === 'Storage') { Icon = Folder; iconColor = "text-purple-400"; }
-    else if (linkType === 'YouTube' || linkType === 'Vimeo') { Icon = Video; iconColor = "text-red-400"; }
-    else if (linkType === 'PDF' || linkType === 'Google Docs' || linkType === 'Word') { Icon = FileText; iconColor = "text-blue-400"; }
+    // Simple mapping for list view icons (distinct from Badge icons)
+    if (linkType === 'code' || linkType === 'GitHub' || linkType === 'GitLab') { Icon = Code; iconColor = "text-green-400"; }
+    else if (linkType === 'storage' || linkType === 'Google Drive' || linkType === 'OneDrive') { Icon = Folder; iconColor = "text-purple-400"; }
+    else if (linkType === 'video' || linkType === 'YouTube' || linkType === 'Vimeo') { Icon = Video; iconColor = "text-red-400"; }
+    else if (linkType === 'pdf' || linkType === 'document' || linkType === 'Word' || linkType === 'Google Docs' || linkType === 'presentation') { Icon = FileText; iconColor = "text-blue-400"; }
 
     // Display Label fallback
     const displayLabel = label || linkType || 'Resource';

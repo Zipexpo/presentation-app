@@ -35,11 +35,15 @@ export const getGoogleDrivePreviewLink = (url) => {
 
 export const getLinkType = (url) => {
   if (!url) return 'link';
-  if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) return 'image';
-  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'video';
-  if (url.includes('docs.google.com/presentation')) return 'presentation';
-  if (url.includes('drive.google.com')) return 'storage';
-  if (url.includes('github.com')) return 'code';
+  const u = url.toLowerCase();
+  if (u.match(/\.(jpeg|jpg|gif|png|webp)$/)) return 'image';
+  if (u.includes('youtube.com') || u.includes('youtu.be') || u.includes('vimeo.com') || u.match(/\.(mp4|webm|ogg)$/)) return 'video';
+  if (u.includes('docs.google.com/presentation')) return 'presentation';
+  if (u.includes('docs.google.com/document') || u.match(/\.(doc|docx)$/)) return 'document';
+  if (u.includes('docs.google.com/spreadsheets') || u.match(/\.(xls|xlsx|csv)$/)) return 'spreadsheet';
+  if (u.endsWith('.pdf')) return 'pdf';
+  if (u.includes('drive.google.com')) return 'storage';
+  if (u.includes('github.com') || u.includes('gitlab.com')) return 'code';
   return 'link';
 };
 
@@ -47,7 +51,7 @@ export const getEmbedUrl = (url, type) => {
   if (!url) return null;
 
   // Force specific handling if type is provided
-  if (type === 'presentation' || type === 'pdf' || type === 'doc' || type === 'video') {
+  if (type === 'presentation' || type === 'pdf' || type === 'document' || type === 'video') {
     // If it's a Google Drive link and we expect embedding
     if (url.includes('drive.google.com')) {
       let id = null;
@@ -57,6 +61,11 @@ export const getEmbedUrl = (url, type) => {
 
       if (id) return `https://drive.google.com/file/d/${id}/preview`;
     }
+
+    // Generic PDF or Doc (Online File) - Use Google Docs Viewer
+    if ((type === 'pdf' || type === 'document') && !url.includes('google.com')) {
+      return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+    }
   }
 
   // YouTube
@@ -65,6 +74,15 @@ export const getEmbedUrl = (url, type) => {
       ? url.split('/').pop()
       : new URLSearchParams(new URL(url).search).get('v');
     return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+  }
+
+  // Vimeo
+  if (url.includes('vimeo.com')) {
+    const videoId = url.split('/').pop();
+    // Verify it's numeric to avoid non-video pages
+    if (videoId && /^\d+$/.test(videoId)) {
+      return `https://player.vimeo.com/video/${videoId}`;
+    }
   }
 
   // Google Slides
@@ -86,9 +104,14 @@ export const getEmbedUrl = (url, type) => {
     }
   }
 
+  // Generic Video Files
+  if (type === 'video' && url.match(/\.(mp4|webm|ogg)$/i)) {
+    return url;
+  }
+
   return null;
 };
 
-export const isEmbeddable = (url) => {
-  return !!getEmbedUrl(url);
+export const isEmbeddable = (url, type) => {
+  return !!getEmbedUrl(url, type);
 };

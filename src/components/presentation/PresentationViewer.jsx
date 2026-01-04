@@ -70,7 +70,7 @@ const PresentationViewer = memo(function PresentationViewer({
                         src={getEmbedUrl(activeResource.url, activeResource.type)}
                         className="absolute inset-0 w-full h-full border-none"
                         allowFullScreen
-                        referrerPolicy="no-referrer"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         key={activeResource.url} // Force remount on url change
                     />
                 )}
