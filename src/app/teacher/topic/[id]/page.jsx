@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import FeedbackModal from '@/components/ui/FeedbackModal'
 import PresetManager from '@/components/teacher/PresetManager'
 import EvaluationEditor from '@/components/teacher/EvaluationEditor'
-import { ExternalLink, Video, FileText, ImageIcon, Calendar, Clock, Edit3, ArrowLeft, LayoutGrid, List, Search, Filter, Plus, X, AlertTriangle, Trash2 } from 'lucide-react'
+import { ExternalLink, Video, FileText, ImageIcon, Calendar, Clock, Edit3, ArrowLeft, LayoutGrid, List, Search, Filter, Plus, X, AlertTriangle, Trash2, Share2 } from 'lucide-react'
 import { getGoogleDriveDirectLink, getGoogleDrivePreviewLink } from '@/lib/utils'
 
 export default function TopicDetailPage() {
@@ -61,6 +61,11 @@ export default function TopicDetailPage() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [showAddProject, setShowAddProject] = useState(false);
 
+  // Sharing State
+  const [isOwner, setIsOwner] = useState(false);
+  const [invitedTeachers, setInvitedTeachers] = useState([]);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/login')
@@ -87,8 +92,12 @@ export default function TopicDetailPage() {
         }
 
         if (resTopic.ok) {
+          console.log('Topic Permissions:', { isOwner: dataTopic.isOwner, invited: dataTopic.topic.invitedTeachers });
           setTopic(dataTopic.topic)
           setProjects(dataTopic.projects)
+          setIsOwner(dataTopic.isOwner !== false);
+          setInvitedTeachers(dataTopic.topic.invitedTeachers || []);
+
           // Populate edit form
           // Auto-migrate Logic
           let presConfig = dataTopic.topic.presentationConfig || { durationPerProject: 10, gradingRubric: [], gradingType: 'survey', surveyQuestions: [] };
@@ -243,6 +252,26 @@ export default function TopicDetailPage() {
     return <span className="text-5xl font-bold text-red-500">{m}m {s}s</span>;
   };
 
+  // Invite Handlers
+  const handleUpdateInvites = async (newInvites) => {
+    try {
+      const res = await fetch(`/api/teacher/topics/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invitedTeachers: newInvites }),
+      });
+      if (res.ok) {
+        setInvitedTeachers(newInvites);
+        setFeedback({ isOpen: true, type: 'success', title: 'Invites Updated', message: 'Topic sharing settings saved.' });
+        setShowShareDialog(false);
+      } else {
+        throw new Error('Failed to update invites');
+      }
+    } catch (err) {
+      setFeedback({ isOpen: true, type: 'error', title: 'Error', message: err.message });
+    }
+  };
+
   if (loading) return <div className="p-10 text-center text-slate-500 animate-pulse">Loading topic details...</div>
   if (!topic) return <div className="p-10 text-center text-red-500 font-bold">{error || 'Topic not found'}</div>
 
@@ -258,10 +287,22 @@ export default function TopicDetailPage() {
           <p className="text-slate-600 mt-1 max-w-2xl">{topic.description}</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowEdit(!showEdit)} className="bg-white/50 text-slate-700 hover:bg-white border-none shadow-sm backdrop-blur-sm">
-            <Edit3 className="w-4 h-4 mr-2" />
-            {showEdit ? 'Cancel Edit' : 'Edit Topic'}
-          </Button>
+          {isOwner ? (
+            <>
+              <Button onClick={() => setShowShareDialog(true)} className="bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 shadow-sm">
+                <Share2 className="w-4 h-4 mr-2" />
+                Share Topic
+              </Button>
+              <Button onClick={() => setShowEdit(!showEdit)} className="bg-white/50 text-slate-700 hover:bg-white border-none shadow-sm backdrop-blur-sm">
+                <Edit3 className="w-4 h-4 mr-2" />
+                {showEdit ? 'Cancel Edit' : 'Edit Topic'}
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 text-sm font-medium">
+              <AlertTriangle className="w-4 h-4" /> Read Only View
+            </div>
+          )}
           <Button onClick={() => router.push(`/presentation/${id}`)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
             <Video className="w-4 h-4 mr-2" /> Start Presentation
           </Button>
@@ -697,7 +738,7 @@ export default function TopicDetailPage() {
                 example += "," + editForm.resourceRequirements.map(() => "https://example.com/resource").join(",");
               }
 
-              const csvContent = "data:text/csv;charset=utf-8,%EF%BB%BF" + encodeURIComponent(headers + "\n" + example);
+              const csvContent = "data:text/csv;charset=utf-8,%SAME%F%BB%BF" + encodeURIComponent(headers + "\n" + example);
               const link = document.createElement("a");
               link.setAttribute("href", csvContent);
               link.setAttribute("download", "projects_dynamic_template.csv");
@@ -759,9 +800,11 @@ export default function TopicDetailPage() {
                 </div>
               </div>
 
-              <Button onClick={() => setShowAddProject(true)} className="bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-lg shadow-blue-500/20 shrink-0">
-                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Project</span><span className="sm:hidden">Add</span>
-              </Button>
+              {isOwner && (
+                <Button onClick={() => setShowAddProject(true)} className="bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-lg shadow-blue-500/20 shrink-0">
+                  <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Project</span><span className="sm:hidden">Add</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -809,24 +852,26 @@ export default function TopicDetailPage() {
                           </td>
                           <td className="px-4 py-3 flex gap-2 items-center">
                             <Button size="sm" variant="ghost" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => setSelectedProject(p)}>View</Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
-                              setConfirmModal({
-                                isOpen: true,
-                                message: `Delete project "${p.projectName}"?`,
-                                onConfirm: async () => {
-                                  const res = await fetch(`/api/teacher/topics/${id}/projects/${p._id}`, { method: 'DELETE' });
-                                  if (res.ok) {
-                                    setProjects(prev => prev.filter(proj => proj._id !== p._id));
-                                    setFeedback({ isOpen: true, type: 'success', title: 'Deleted', message: 'Project deleted successfully.' });
-                                  } else {
-                                    setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to delete project.' });
+                            {isOwner && (
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  message: `Delete project "${p.projectName}"?`,
+                                  onConfirm: async () => {
+                                    const res = await fetch(`/api/teacher/topics/${id}/projects/${p._id}`, { method: 'DELETE' });
+                                    if (res.ok) {
+                                      setProjects(prev => prev.filter(proj => proj._id !== p._id));
+                                      setFeedback({ isOpen: true, type: 'success', title: 'Deleted', message: 'Project deleted successfully.' });
+                                    } else {
+                                      setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to delete project.' });
+                                    }
+                                    setConfirmModal({ isOpen: false, message: '', onConfirm: null });
                                   }
-                                  setConfirmModal({ isOpen: false, message: '', onConfirm: null });
-                                }
-                              });
-                            }}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                                });
+                              }}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -890,24 +935,26 @@ export default function TopicDetailPage() {
                           <Button size="sm" variant="outline" className="h-8 text-xs border-blue-200 text-blue-600 hover:bg-blue-50" onClick={() => setSelectedProject(p)}>
                             View Details
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
-                            setConfirmModal({
-                              isOpen: true,
-                              message: `Delete project "${p.projectName}"?`,
-                              onConfirm: async () => {
-                                const res = await fetch(`/api/teacher/topics/${id}/projects/${p._id}`, { method: 'DELETE' });
-                                if (res.ok) {
-                                  setProjects(prev => prev.filter(proj => proj._id !== p._id));
-                                  setFeedback({ isOpen: true, type: 'success', title: 'Deleted', message: 'Project deleted successfully.' });
-                                } else {
-                                  setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to delete project.' });
+                          {isOwner && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                message: `Delete project "${p.projectName}"?`,
+                                onConfirm: async () => {
+                                  const res = await fetch(`/api/teacher/topics/${id}/projects/${p._id}`, { method: 'DELETE' });
+                                  if (res.ok) {
+                                    setProjects(prev => prev.filter(proj => proj._id !== p._id));
+                                    setFeedback({ isOpen: true, type: 'success', title: 'Deleted', message: 'Project deleted successfully.' });
+                                  } else {
+                                    setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to delete project.' });
+                                  }
+                                  setConfirmModal({ isOpen: false, message: '', onConfirm: null });
                                 }
-                                setConfirmModal({ isOpen: false, message: '', onConfirm: null });
-                              }
-                            });
-                          }}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                              });
+                            }}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1061,6 +1108,58 @@ export default function TopicDetailPage() {
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setConfirmModal(p => ({ ...p, isOpen: false }))}>Cancel</Button>
             <Button onClick={confirmModal.onConfirm} className="bg-blue-600 hover:bg-blue-700 text-white">Confirm</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      %SAME%
+
+      {/* Share / Invite Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share Topic</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Invite other teachers to view this topic (Read Only). They will see it in the "Topic Sharing" mode but cannot make changes.
+            </p>
+            <div className="space-y-2">
+              <Label>Invited Teachers (Emails)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="teacher@example.com"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = e.currentTarget.value.trim();
+                      if (val && !invitedTeachers.includes(val)) {
+                        handleUpdateInvites([...invitedTeachers, val]);
+                        e.currentTarget.value = '';
+                      }
+                    }
+                  }}
+                />
+                <Button onClick={(e) => {
+                  const input = e.currentTarget.previousElementSibling;
+                  const val = input.value.trim();
+                  if (val && !invitedTeachers.includes(val)) {
+                    handleUpdateInvites([...invitedTeachers, val]);
+                    input.value = '';
+                  }
+                }}>Add</Button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              {invitedTeachers.map(email => (
+                <div key={email} className="flex items-center justify-between p-2 bg-slate-50 rounded border text-sm">
+                  <span>{email}</span>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500" onClick={() => handleUpdateInvites(invitedTeachers.filter(t => t !== email))}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              {invitedTeachers.length === 0 && <p className="text-xs text-slate-400 italic">No invites yet.</p>}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

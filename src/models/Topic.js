@@ -99,6 +99,7 @@ const topicSchema = new mongoose.Schema({
     startTime: Date, // When the slot/phase started
     pauseTime: Date, // If paused, when it stopped
   },
+  invitedTeachers: [{ type: String }], // List of emails
   classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

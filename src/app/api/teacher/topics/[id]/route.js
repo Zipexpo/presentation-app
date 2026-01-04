@@ -22,13 +22,24 @@ export async function GET(_req, { params }) {
   await connectToDB();
   const { id } = await params;
 
-  const topic = await Topic.findOne({
-    _id: id,
-    teacherId: session.user.id,
-  }).lean();
+  // Find topic first to check permissions (Owner OR Invited)
+  const topic = await Topic.findById(id).lean();
 
   if (!topic) {
     return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
+  }
+
+  // Check access
+  const isOwner = topic.teacherId.toString() === session.user.id;
+  const isInvited = topic.invitedTeachers?.includes(session.user.email);
+
+  if (!isOwner && !isInvited) {
+    // If not owner and not invited, deny.
+    // NOTE: In future we might want Admin bypass? Currently Schema says teacherId required.
+    // If Admin, maybe allow? existing code allowed admin in requireTeacher but tied find to teacherId.
+    if (session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
   }
 
   const projects = await ProjectSubmission.find(
@@ -37,7 +48,7 @@ export async function GET(_req, { params }) {
     .sort({ submittedAt: 1 })
     .lean();
 
-  return NextResponse.json({ topic, projects });
+  return NextResponse.json({ topic, projects, isOwner });
 }
 
 export async function POST(request, { params }) {
@@ -100,6 +111,7 @@ export async function PUT(request, { params }) {
   if (resourceRequirements) updateData.resourceRequirements = resourceRequirements;
   if (presentationConfig) updateData.presentationConfig = presentationConfig;
   if (classId !== undefined) updateData.classId = classId;
+  if (body.invitedTeachers) updateData.invitedTeachers = body.invitedTeachers; // Allow updating invites
 
   const topic = await Topic.findOneAndUpdate(
     { _id: id, teacherId: session.user.id },
