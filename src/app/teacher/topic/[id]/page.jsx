@@ -835,7 +835,10 @@ export default function TopicDetailPage() {
                         <tr key={p._id} className="hover:bg-white/60 transition-colors">
                           <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-3">
-                              {p.thumbnailUrl ? <img src={getGoogleDriveDirectLink(p.thumbnailUrl)} className="w-10 h-10 rounded-md object-cover shadow-sm" referrerPolicy="no-referrer" /> : <div className="w-10 h-10 bg-slate-200 rounded-md flex items-center justify-center text-xs text-slate-500">No Img</div>}
+                              {p.thumbnailUrl ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={getGoogleDriveDirectLink(p.thumbnailUrl)} alt={p.projectName || "Project Thumbnail"} className="w-10 h-10 rounded-md object-cover shadow-sm" referrerPolicy="no-referrer" />
+                              ) : <div className="w-10 h-10 bg-slate-200 rounded-md flex items-center justify-center text-xs text-slate-500">No Img</div>}
                               {p.projectName}
                             </div>
                           </td>
@@ -887,6 +890,7 @@ export default function TopicDetailPage() {
                     {/* Thumbnail */}
                     <div className="h-40 bg-slate-100 relative group-hover:opacity-90 transition-opacity">
                       {p.thumbnailUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={getGoogleDriveDirectLink(p.thumbnailUrl)} alt={p.projectName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
@@ -1019,6 +1023,7 @@ export default function TopicDetailPage() {
               {/* Hero / Thumbnail */}
               {selectedProject.thumbnailUrl && (
                 <div className="w-full h-48 bg-slate-100 rounded-xl overflow-hidden shadow-inner">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={getGoogleDriveDirectLink(selectedProject.thumbnailUrl)} alt="Thumbnail" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
               )}
@@ -1121,7 +1126,7 @@ export default function TopicDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-slate-500">
-              Invite other teachers to view this topic (Read Only). They will see it in the "Topic Sharing" mode but cannot make changes.
+              Invite other teachers to view this topic (Read Only). They will see it in the &quot;Topic Sharing&quot; mode but cannot make changes.
             </p>
             <div className="space-y-2">
               <Label>Invited Teachers (Emails)</Label>
