@@ -42,7 +42,8 @@ export const getLinkType = (url) => {
   if (u.includes('docs.google.com/document') || u.match(/\.(doc|docx)$/)) return 'document';
   if (u.includes('docs.google.com/spreadsheets') || u.match(/\.(xls|xlsx|csv)$/)) return 'spreadsheet';
   if (u.endsWith('.pdf')) return 'pdf';
-  if (u.includes('drive.google.com')) return 'storage';
+  if (u.includes('canva.com')) return 'presentation';
+  if (u.includes('drive.google.com') || u.includes('sharepoint.com') || u.includes('onedrive.live.com')) return 'storage';
   if (u.includes('github.com') || u.includes('gitlab.com')) return 'code';
   return 'link';
 };
@@ -68,8 +69,16 @@ export const getEmbedUrl = (url, type) => {
     }
   }
 
+  // GitHub -> GitHubBox
+  if (url.includes('github.com')) {
+    return url.replace('github.com', 'githubbox.com');
+  }
+
   // YouTube
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
+    // Check if already embed
+    if (url.includes('/embed/')) return url;
+
     const videoId = url.includes('youtu.be')
       ? url.split('/').pop()
       : new URLSearchParams(new URL(url).search).get('v');
@@ -106,6 +115,29 @@ export const getEmbedUrl = (url, type) => {
 
   // Generic Video Files
   if (type === 'video' && url.match(/\.(mp4|webm|ogg)$/i)) {
+    return url;
+  }
+
+  // Canva
+  if (url.includes('canva.com')) {
+    // Attempt to convert to embed URL, or just return normalized view URL
+    // Remove /edit or existing /view and append /view?embed
+    // Simple approach: if it has /design/ID/..., ensure it ends with /view?embed
+    if (url.includes('/design/')) {
+      return url.replace(/\/edit.*$/, '/view?embed').replace(/\/view.*$/, '/view?embed');
+    }
+  }
+
+  // OneDrive / SharePoint
+  if (url.includes('sharepoint.com') || url.includes('onedrive.live.com')) {
+    // If it's a direct link or sharing link, we often just want to iframe it if possible
+    // or let the generic fallback handle it.
+    // Some sharepoint links might need ?web=1 if they point to a file direct.
+    return url;
+  }
+
+  // Generic Fallback for specific types that are likely embeddable (or we want to try)
+  if (type === 'presentation' || type === 'code' || type === 'document' || type === 'pdf' || type === 'storage') {
     return url;
   }
 

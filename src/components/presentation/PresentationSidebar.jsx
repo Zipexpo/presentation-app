@@ -242,17 +242,49 @@ const PresentationSidebar = memo(function PresentationSidebar({
                                 </div>
                                 {isMaterialsOpen && (
                                     <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-slate-800/20">
-                                        {currentProject.videoLink && (
-                                            <ResourceLinkItem url={currentProject.videoLink} label={topic.submissionConfig?.labels?.video || "Video"} type="video" active={activeResource?.url === currentProject.videoLink} onShow={() => handleSwitchResource('iframe', currentProject.videoLink)} />
+                                        {/* Video: Check config and existence */}
+                                        {topic.submissionConfig?.includeVideo !== false && currentProject.videoLink && (
+                                            <ResourceLinkItem
+                                                url={currentProject.videoLink}
+                                                label={topic.submissionConfig?.labels?.video || "Video"}
+                                                type="video"
+                                                active={activeResource?.url === currentProject.videoLink}
+                                                onShow={(url) => handleSwitchResource('iframe', url)}
+                                            />
                                         )}
-                                        {currentProject.presentationLink && (
-                                            <ResourceLinkItem url={currentProject.presentationLink} label={topic.submissionConfig?.labels?.presentation || "Slides"} type="presentation" active={activeResource?.url === currentProject.presentationLink} onShow={() => handleSwitchResource('iframe', currentProject.presentationLink)} />
+
+                                        {/* Slides: Check config and existence */}
+                                        {topic.submissionConfig?.includePresentation !== false && currentProject.presentationLink && (
+                                            <ResourceLinkItem
+                                                url={currentProject.presentationLink}
+                                                label={topic.submissionConfig?.labels?.presentation || "Slides"}
+                                                type="presentation"
+                                                active={activeResource?.url === currentProject.presentationLink}
+                                                onShow={(url) => handleSwitchResource('iframe', url)}
+                                            />
                                         )}
-                                        {currentProject.sourceCodeLink && (
-                                            <ResourceLinkItem url={currentProject.sourceCodeLink} label={topic.submissionConfig?.labels?.sourceCode || "Code"} type="code" active={activeResource?.url === currentProject.sourceCodeLink} onShow={() => handleSwitchResource('iframe', currentProject.sourceCodeLink)} />
+
+                                        {/* Source Code: Check config and existence */}
+                                        {topic.submissionConfig?.includeSourceCode !== false && currentProject.sourceCodeLink && (
+                                            <ResourceLinkItem
+                                                url={currentProject.sourceCodeLink}
+                                                label={topic.submissionConfig?.labels?.sourceCode || "Code"}
+                                                type="code"
+                                                active={activeResource?.url === currentProject.sourceCodeLink}
+                                                onShow={(url) => handleSwitchResource('iframe', url)}
+                                            />
                                         )}
+
+                                        {/* Dynamic Resources */}
                                         {currentProject.resources?.map((res, i) => (
-                                            <ResourceLinkItem key={i} url={res.url} label={res.label || res.name} type={res.type} active={activeResource?.url === res.url} onShow={() => handleSwitchResource('iframe', res.url)} />
+                                            <ResourceLinkItem
+                                                key={i}
+                                                url={res.url}
+                                                label={res.label || res.name}
+                                                type={res.type}
+                                                active={activeResource?.url === res.url}
+                                                onShow={(url) => handleSwitchResource('iframe', url)}
+                                            />
                                         ))}
                                     </div>
                                 )}

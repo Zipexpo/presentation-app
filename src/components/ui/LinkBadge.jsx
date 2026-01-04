@@ -71,6 +71,26 @@ const LinkBadge = ({ url, type: propType, className }) => {
             icon = <FileText className="w-3 h-3 text-blue-800" />;
             colorClass = "bg-blue-50 text-blue-800 border-blue-200";
             break;
+        case 'presentation':
+            icon = <img src="/logo%20icon/google_slides.svg" alt="Slides" className="w-3 h-3" />;
+            colorClass = "bg-orange-100 text-orange-800 border-orange-200";
+            break;
+        case 'video':
+            icon = <img src="/logo%20icon/youtube.svg" alt="Video" className="w-3 h-3" />;
+            colorClass = "bg-red-50 text-red-600 border-red-200";
+            break;
+        case 'code':
+            icon = <img src="/logo%20icon/github.svg" alt="Code" className="w-3 h-3" />;
+            colorClass = "bg-gray-100 text-gray-900 border-gray-200";
+            break;
+        case 'document':
+            icon = <FileText className="w-3 h-3 text-blue-600" />;
+            colorClass = "bg-blue-50 text-blue-700 border-blue-200";
+            break;
+        case 'spreadsheet':
+            icon = <FileText className="w-3 h-3 text-green-600" />;
+            colorClass = "bg-green-50 text-green-700 border-green-200";
+            break;
     }
 
     return (

@@ -42,7 +42,7 @@ const ResourceLinkItem = ({
                 <Icon className={`w-4 h-4 shrink-0 ${iconColor}`} />
                 <span className="text-sm truncate text-slate-300">{displayLabel}</span>
                 {/* Optional: Show Badge if space prompts or if desired, but maybe overkill for sidebar? */}
-                {/* <LinkBadge url={url} className="hidden sm:flex scale-75 origin-left" /> */}
+                <LinkBadge url={url} type={linkType} className="hidden sm:flex scale-75 origin-left" />
             </div>
 
             <div className="flex gap-1 shrink-0 ml-2">
