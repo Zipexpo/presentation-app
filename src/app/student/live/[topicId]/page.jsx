@@ -39,7 +39,7 @@ export default function StudentLivePage() {
     // Guest Identity State
     const [guestName, setGuestName] = useState('')
     const [guestId, setGuestId] = useState('')
-
+    console.log(form.presentationLink)
     // Load/Create Guest Identity
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -374,10 +374,11 @@ export default function StudentLivePage() {
                                 <div className="mb-4 bg-slate-900 rounded-xl overflow-hidden relative group shadow-2xl ring-4 ring-slate-100/50">
                                     <div className="aspect-video w-full">
                                         <iframe
-                                            src={getEmbedUrl(activeResource.url)}
+                                            src={getEmbedUrl(activeResource.url, activeResource.type)}
                                             className="w-full h-full"
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowFullScreen
+                                            referrerPolicy="no-referrer"
                                             title="Resource Viewer"
                                         />
                                     </div>
@@ -400,7 +401,8 @@ export default function StudentLivePage() {
                                     { url: currentProject.videoLink, label: 'Video Submission', icon: Video, color: 'text-red-500', bg: 'bg-red-50' },
                                     { url: currentProject.presentationLink, label: 'Presentation Slides', icon: FileText, color: 'text-orange-500', bg: 'bg-orange-50' },
                                     { url: currentProject.sourceCodeLink, label: 'Source Code', icon: Code, color: 'text-slate-600', bg: 'bg-slate-100' },
-                                    ...(currentProject.resources?.map(r => ({ ...r, label: r.label || r.name, icon: LinkIcon, color: 'text-blue-500', bg: 'bg-blue-50' })) || [])
+                                    ...(currentProject.resources?.map(r => ({ ...r, label: r.label || r.name, icon: LinkIcon, color: 'text-blue-500', bg: 'bg-blue-50' })) || []),
+                                    ...(currentProject.additionalMaterials?.map(m => ({ url: m.url, label: m.label, icon: LinkIcon, color: 'text-yellow-500', bg: 'bg-yellow-50' })) || [])
                                 ].filter(r => r.url).map((res, i) => (
                                     <div key={i} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${activeResource?.url === res.url ? 'bg-blue-50/80 border-blue-200 shadow-inner' : 'bg-white/60 border-transparent hover:bg-white hover:border-slate-200 hover:shadow-sm'}`}>
                                         <div className="flex items-center gap-3 min-w-0">
@@ -430,7 +432,8 @@ export default function StudentLivePage() {
                                     { url: currentProject.videoLink },
                                     { url: currentProject.presentationLink },
                                     { url: currentProject.sourceCodeLink },
-                                    ...(currentProject.resources || [])
+                                    ...(currentProject.resources || []),
+                                    ...(currentProject.additionalMaterials || [])
                                 ].every(r => !r.url) && (
                                         <div className="text-center py-8 text-slate-400 text-sm italic border-dashed border-2 border-slate-200 rounded-xl bg-slate-50/50">
                                             No materials available for this project.

@@ -67,9 +67,10 @@ const PresentationViewer = memo(function PresentationViewer({
                     </div>
                 ) : (
                     <iframe
-                        src={getEmbedUrl(activeResource.url)}
+                        src={getEmbedUrl(activeResource.url, activeResource.type)}
                         className="absolute inset-0 w-full h-full border-none"
                         allowFullScreen
+                        referrerPolicy="no-referrer"
                         key={activeResource.url} // Force remount on url change
                     />
                 )}

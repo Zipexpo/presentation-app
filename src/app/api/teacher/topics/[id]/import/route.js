@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDB } from '@/lib/db';
 import ProjectSubmission from '@/models/ProjectSubmission';
 import Topic from '@/models/Topic';
+import User from '@/models/User';
 
 async function requireTeacher() {
     const session = await getServerSession(authOptions);
@@ -37,6 +38,23 @@ export async function POST(request, { params }) {
     // Optional: Check if topic belongs to this teacher
     // if (topic.teacherId.toString() !== session.user.id) ...
 
+    // 1. Collect all emails to look up
+    const allEmails = new Set();
+    projects.forEach(p => {
+        if (p.members && Array.isArray(p.members)) {
+            p.members.forEach(m => {
+                if (m.email) allEmails.add(m.email.toLowerCase().trim());
+            });
+        }
+    });
+
+    // 2. Lookup Users
+    const users = await User.find({ email: { $in: Array.from(allEmails) } }).lean();
+    const userMap = {};
+    users.forEach(u => {
+        userMap[u.email.toLowerCase()] = u;
+    });
+
     const createdProjects = [];
     const errors = [];
 
@@ -48,12 +66,37 @@ export async function POST(request, { params }) {
                 continue;
             }
 
+            // Hydrate members
+            const hydratedMembers = (p.members || []).map(m => {
+                const email = m.email?.toLowerCase().trim();
+                const user = userMap[email];
+                if (user) {
+                    return {
+                        email: user.email,
+                        name: user.name,
+                        studentId: user.studentId
+                    };
+                }
+                // Fallback for non-registered users
+                return {
+                    email: m.email,
+                    name: m.email?.split('@')[0] || 'Unknown', // Fallback name
+                    studentId: ''
+                };
+            });
+
             // Create
             const newProject = await ProjectSubmission.create({
                 topicId,
                 groupNumber: p.groupNumber,
+                groupName: p.groupName,
                 projectName: p.projectName,
-                members: p.members || [], // Array of { name, studentId, email }
+                members: hydratedMembers,
+                videoLink: p.videoLink,
+                presentationLink: p.presentationLink,
+                sourceCodeLink: p.sourceCodeLink,
+                thumbnailUrl: p.thumbnailUrl,
+                resources: p.resources || [],
                 // Default other fields
             });
             createdProjects.push(newProject);

@@ -5,6 +5,7 @@ import { connectToDB } from '@/lib/db';
 import ProjectSubmission from '@/models/ProjectSubmission';
 import Topic from '@/models/Topic';
 import User from '@/models/User';
+import { getGoogleDriveDirectLink, getGoogleDrivePreviewLink } from '@/lib/utils';
 
 export async function POST(request) {
     try {
@@ -100,11 +101,20 @@ export async function POST(request) {
             existing.projectName = projectName;
             existing.members = members;
             existing.videoLink = links?.video;
-            existing.presentationLink = links?.presentation;
+
+            // Apply transformations
+            existing.presentationLink = links?.presentation ? getGoogleDrivePreviewLink(links.presentation) : undefined;
             existing.storageLink = links?.storage;
             existing.sourceCodeLink = links?.sourceCode;
-            existing.thumbnailUrl = links?.thumbnailUrl;
-            existing.resources = resources || [];
+            existing.thumbnailUrl = links?.thumbnailUrl ? getGoogleDriveDirectLink(links.thumbnailUrl) : undefined;
+
+            // Transform dynamic resources
+            existing.resources = (resources || []).map(r => {
+                if (r.type === 'image') return { ...r, url: getGoogleDriveDirectLink(r.url) };
+                if (r.type === 'presentation') return { ...r, url: getGoogleDrivePreviewLink(r.url) };
+                return r;
+            });
+
             existing.additionalMaterials = additionalMaterials || [];
             existing.submittedAt = now;
             submission = await existing.save();
@@ -117,11 +127,15 @@ export async function POST(request) {
                 projectName,
                 members,
                 videoLink: links?.video,
-                presentationLink: links?.presentation,
+                presentationLink: links?.presentation ? getGoogleDrivePreviewLink(links.presentation) : undefined,
                 storageLink: links?.storage,
                 sourceCodeLink: links?.sourceCode,
-                thumbnailUrl: links?.thumbnailUrl,
-                resources: resources || [],
+                thumbnailUrl: links?.thumbnailUrl ? getGoogleDriveDirectLink(links.thumbnailUrl) : undefined,
+                resources: (resources || []).map(r => {
+                    if (r.type === 'image') return { ...r, url: getGoogleDriveDirectLink(r.url) };
+                    if (r.type === 'presentation') return { ...r, url: getGoogleDrivePreviewLink(r.url) };
+                    return r;
+                }),
                 additionalMaterials: additionalMaterials || [],
                 submittedAt: now
             });

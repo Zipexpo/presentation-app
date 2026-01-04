@@ -5,7 +5,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getEmbedUrl } from '@/lib/utils';
 
 // Configure worker to load from CDN to avoid build issues
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -15,6 +15,21 @@ export default function PDFPreview({ url, className }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [useFallback, setUseFallback] = useState(false);
+
+    // Check for Google Drive Embed (or other embeddable PDF types)
+    const embedUrl = getEmbedUrl(url, 'pdf');
+    if (embedUrl && (url.includes('drive.google.com') || embedUrl !== url)) {
+        return (
+            <div className={cn("w-full h-full min-h-[500px] flex flex-col bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden relative", className)}>
+                <iframe
+                    src={embedUrl}
+                    className="w-full h-full absolute inset-0 border-none"
+                    allowFullScreen
+                    referrerPolicy="no-referrer"
+                />
+            </div>
+        );
+    }
 
     // Use proxy for external URLs to avoid CORS issues
     const pdfUrl = url.startsWith('http') ? `/api/utils/proxy-pdf?url=${encodeURIComponent(url)}` : url;

@@ -16,7 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import FeedbackModal from '@/components/ui/FeedbackModal'
 import PresetManager from '@/components/teacher/PresetManager'
 import EvaluationEditor from '@/components/teacher/EvaluationEditor'
-import { ExternalLink, Video, FileText, ImageIcon, Calendar, Clock, Edit3, ArrowLeft, LayoutGrid, List, Search, Filter, Plus, X, AlertTriangle } from 'lucide-react'
+import { ExternalLink, Video, FileText, ImageIcon, Calendar, Clock, Edit3, ArrowLeft, LayoutGrid, List, Search, Filter, Plus, X, AlertTriangle, Trash2 } from 'lucide-react'
+import { getGoogleDriveDirectLink, getGoogleDrivePreviewLink } from '@/lib/utils'
 
 export default function TopicDetailPage() {
   const { id } = useParams()
@@ -572,16 +573,77 @@ export default function TopicDetailPage() {
 
         <section className="glass-card p-4 md:p-6 space-y-4">
           <h2 className="text-lg font-semibold text-slate-800">Import Projects (CSV)</h2>
-          <div className="flex gap-2 items-end">
+          <div className="flex gap-4 items-end">
             <div className="flex-1">
-              <Label htmlFor="csvFile" className="text-xs text-slate-500 mb-1 block">Group, Name, Emails (semicolon)</Label>
+              <Label htmlFor="csvFile" className="text-xs text-slate-500 mb-1 block">
+                Format: <span className="font-mono">
+                  Group #, Group Name, Project Name, Members (emails separated by ;)
+                  {editForm.submissionConfig?.includeVideo ? ', Video Link' : ''}
+                  {editForm.submissionConfig?.includePresentation ? ', Presentation Link' : ''}
+                  {editForm.submissionConfig?.includeSourceCode ? ', Source Code' : ''}
+                  {editForm.submissionConfig?.includeThumbnail ? ', Thumbnail URL' : ''}
+                  {editForm.resourceRequirements?.length > 0 ? ', ' + editForm.resourceRequirements.map(r => r.label).join(', ') : ''}
+                </span>
+                <span className="ml-2 text-orange-500 block sm:inline">*No commas in names. Use semicolon (;) for multiple emails.</span>
+              </Label>
               <Input id="csvFile" type="file" accept=".csv" className="bg-white/50 cursor-pointer" onChange={(e) => {
                 const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
-                  const lines = evt.target.result.split('\n').filter(l => l.trim());
-                  const projectsToImport = lines.map(line => {
-                    const parts = line.split(','); return { groupNumber: parseInt(parts[0]?.trim()) || undefined, projectName: parts[1]?.trim(), members: parts[2]?.trim()?.split(';').map(e => ({ email: e.trim() })) || [] };
+                  let content = evt.target.result;
+                  if (content.charCodeAt(0) === 0xFEFF) { content = content.slice(1); }
+                  const lines = content.split('\n').filter(l => l.trim());
+                  // Skip header if present (heuristic: if first line has 'Group' or 'Name')
+                  const startIdx = lines[0].toLowerCase().includes('name') ? 1 : 0;
+
+                  const projectsToImport = lines.slice(startIdx).map(line => {
+                    const parts = line.split(',');
+                    let colIdx = 4; // Start after Group#, GroupName, ProjName, Members
+
+                    const project = {
+                      groupNumber: parseInt(parts[0]?.trim()) || undefined,
+                      groupName: parts[1]?.trim(),
+                      projectName: parts[2]?.trim(),
+                      members: parts[3]?.trim()?.split(';').map(e => ({ email: e.trim() })) || []
+                    };
+
+                    if (editForm.submissionConfig?.includeVideo) {
+                      project.videoLink = parts[colIdx++]?.trim();
+                    }
+                    if (editForm.submissionConfig?.includePresentation) {
+                      const val = parts[colIdx++]?.trim();
+                      project.presentationLink = val ? getGoogleDrivePreviewLink(val) : undefined;
+                    }
+                    if (editForm.submissionConfig?.includeSourceCode) {
+                      project.sourceCodeLink = parts[colIdx++]?.trim();
+                    }
+                    if (editForm.submissionConfig?.includeThumbnail) {
+                      const val = parts[colIdx++]?.trim();
+                      project.thumbnailUrl = val ? getGoogleDriveDirectLink(val) : undefined;
+                    }
+
+                    // Parse Dynamic Resources
+                    const dynamicResources = [];
+                    if (editForm.resourceRequirements && editForm.resourceRequirements.length > 0) {
+                      editForm.resourceRequirements.forEach((req) => {
+                        const val = parts[colIdx++]?.trim();
+                        if (val) {
+                          let finalUrl = val;
+                          if (req.type === 'image') finalUrl = getGoogleDriveDirectLink(val);
+                          else if (req.type === 'presentation') finalUrl = getGoogleDrivePreviewLink(val);
+                          else if (req.type === 'url') finalUrl = getGoogleDriveDirectLink(val);  // Keep as is for generic URLs or use Direct if beneficial
+
+                          dynamicResources.push({
+                            label: req.label,
+                            type: req.type || 'url',
+                            url: finalUrl
+                          });
+                        }
+                      });
+                    }
+                    project.resources = dynamicResources;
+
+                    return project;
                   }).filter(p => p.projectName);
 
                   setConfirmModal({
@@ -596,7 +658,8 @@ export default function TopicDetailPage() {
                           setProjects(p => [...p, ...d.projects]);
                           setFeedback({ isOpen: true, type: 'success', title: 'Imported', message: `Successfully imported ${d.projects.length} projects.` });
                         } else {
-                          setFeedback({ isOpen: true, type: 'error', title: 'Import Failed', message: 'Failed to import projects.' });
+                          const err = await res.json();
+                          setFeedback({ isOpen: true, type: 'error', title: 'Import Failed', message: err.error || 'Failed to import projects.' });
                         }
                       } finally {
                         setSaving(false);
@@ -608,6 +671,42 @@ export default function TopicDetailPage() {
                 }; reader.readAsText(file);
               }} />
             </div>
+            <Button variant="outline" onClick={() => {
+              let headers = "Group Number,Group Name,Project Name,Members (emails separated by ;)";
+              let example = `1,Alpha Team,Solar System VR,alice@school.edu;bob@school.edu`;
+
+              if (editForm.submissionConfig?.includeVideo) {
+                headers += ",Video Link";
+                example += ",https://youtu.be/...";
+              }
+              if (editForm.submissionConfig?.includePresentation) {
+                headers += ",Presentation Link";
+                example += ",https://docs.google.com/...";
+              }
+              if (editForm.submissionConfig?.includeSourceCode) {
+                headers += ",Source Code Link";
+                example += ",https://github.com/...";
+              }
+              if (editForm.submissionConfig?.includeThumbnail) {
+                headers += ",Thumbnail URL";
+                example += ",https://example.com/image.jpg";
+              }
+
+              if (editForm.resourceRequirements && editForm.resourceRequirements.length > 0) {
+                headers += "," + editForm.resourceRequirements.map(r => r.label).join(",");
+                example += "," + editForm.resourceRequirements.map(() => "https://example.com/resource").join(",");
+              }
+
+              const csvContent = "data:text/csv;charset=utf-8,%EF%BB%BF" + encodeURIComponent(headers + "\n" + example);
+              const link = document.createElement("a");
+              link.setAttribute("href", csvContent);
+              link.setAttribute("download", "projects_dynamic_template.csv");
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}>
+              <FileText className="w-4 h-4 mr-2" /> Sample CSV
+            </Button>
           </div>
         </section>
       </div>
@@ -693,7 +792,7 @@ export default function TopicDetailPage() {
                         <tr key={p._id} className="hover:bg-white/60 transition-colors">
                           <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-3">
-                              {p.thumbnailUrl ? <img src={p.thumbnailUrl} className="w-10 h-10 rounded-md object-cover shadow-sm" /> : <div className="w-10 h-10 bg-slate-200 rounded-md flex items-center justify-center text-xs text-slate-500">No Img</div>}
+                              {p.thumbnailUrl ? <img src={getGoogleDriveDirectLink(p.thumbnailUrl)} className="w-10 h-10 rounded-md object-cover shadow-sm" referrerPolicy="no-referrer" /> : <div className="w-10 h-10 bg-slate-200 rounded-md flex items-center justify-center text-xs text-slate-500">No Img</div>}
                               {p.projectName}
                             </div>
                           </td>
@@ -708,8 +807,26 @@ export default function TopicDetailPage() {
                             {p.videoLink && <Video className="w-4 h-4 text-red-500" />}
                             {p.presentationLink && <FileText className="w-4 h-4 text-orange-500" />}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3 flex gap-2 items-center">
                             <Button size="sm" variant="ghost" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => setSelectedProject(p)}>View</Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                message: `Delete project "${p.projectName}"?`,
+                                onConfirm: async () => {
+                                  const res = await fetch(`/api/teacher/topics/${id}/projects/${p._id}`, { method: 'DELETE' });
+                                  if (res.ok) {
+                                    setProjects(prev => prev.filter(proj => proj._id !== p._id));
+                                    setFeedback({ isOpen: true, type: 'success', title: 'Deleted', message: 'Project deleted successfully.' });
+                                  } else {
+                                    setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to delete project.' });
+                                  }
+                                  setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+                                }
+                              });
+                            }}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -725,7 +842,7 @@ export default function TopicDetailPage() {
                     {/* Thumbnail */}
                     <div className="h-40 bg-slate-100 relative group-hover:opacity-90 transition-opacity">
                       {p.thumbnailUrl ? (
-                        <img src={p.thumbnailUrl} alt={p.projectName} className="w-full h-full object-cover" />
+                        <img src={getGoogleDriveDirectLink(p.thumbnailUrl)} alt={p.projectName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
                           <ImageIcon className="w-12 h-12 text-blue-200" />
@@ -769,9 +886,29 @@ export default function TopicDetailPage() {
                           {p.videoLink && <Video className="w-4 h-4 text-red-400" />}
                           {p.presentationLink && <FileText className="w-4 h-4 text-orange-400" />}
                         </div>
-                        <Button size="sm" variant="outline" className="h-8 text-xs border-blue-200 text-blue-600 hover:bg-blue-50" onClick={() => setSelectedProject(p)}>
-                          View Details
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="h-8 text-xs border-blue-200 text-blue-600 hover:bg-blue-50" onClick={() => setSelectedProject(p)}>
+                            View Details
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              message: `Delete project "${p.projectName}"?`,
+                              onConfirm: async () => {
+                                const res = await fetch(`/api/teacher/topics/${id}/projects/${p._id}`, { method: 'DELETE' });
+                                if (res.ok) {
+                                  setProjects(prev => prev.filter(proj => proj._id !== p._id));
+                                  setFeedback({ isOpen: true, type: 'success', title: 'Deleted', message: 'Project deleted successfully.' });
+                                } else {
+                                  setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to delete project.' });
+                                }
+                                setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+                              }
+                            });
+                          }}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -835,7 +972,7 @@ export default function TopicDetailPage() {
               {/* Hero / Thumbnail */}
               {selectedProject.thumbnailUrl && (
                 <div className="w-full h-48 bg-slate-100 rounded-xl overflow-hidden shadow-inner">
-                  <img src={selectedProject.thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                  <img src={getGoogleDriveDirectLink(selectedProject.thumbnailUrl)} alt="Thumbnail" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
               )}
 

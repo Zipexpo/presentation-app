@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import FeedbackModal from '@/components/ui/FeedbackModal';
-import { getEmbedUrl, getLinkType } from '@/lib/utils';
+import { getEmbedUrl, getLinkType, getGoogleDriveDirectLink } from '@/lib/utils';
 
 const PDFPreview = dynamic(() => import('./PDFPreview'), { ssr: false });
 
@@ -338,18 +338,35 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
             <div className="relative h-48 sm:h-64 bg-gray-100 group">
                 {!showCoverUrlInput && form.thumbnailUrl ? (
                     <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={form.thumbnailUrl} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('thumbnail-upload-hero').click()}>
-                                <ImageIcon className="w-4 h-4 mr-2" /> Change
-                            </Button>
-                            <Button type="button" variant="secondary" size="sm" onClick={() => setShowCoverUrlInput(true)}>
-                                <LinkIcon className="w-4 h-4 mr-2" /> URL
-                            </Button>
-                            <Button type="button" variant="destructive" size="sm" onClick={() => { if (form.thumbnailUrl) setPendingDeletions(prev => [...prev, form.thumbnailUrl]); handleChange({ target: { name: 'thumbnailUrl', value: '' } }); }}>
-                                Remove
-                            </Button>
+                        {/* If embeddable (e.g. Drive), use iframe. Else use img */}
+                        {isEmbeddable(form.thumbnailUrl) ? (
+                            <div className="absolute inset-0 w-full h-full bg-black">
+                                <iframe
+                                    src={getEmbedUrl(form.thumbnailUrl, 'image')}
+                                    className="w-full h-full border-0"
+                                    allowFullScreen
+                                    referrerPolicy="no-referrer"
+                                />
+                                {/* Overlay transparent div to process clicks for overlay buttons if needed? No, buttons are z-index higher */}
+                            </div>
+                        ) : (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={getGoogleDriveDirectLink(form.thumbnailUrl)} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" referrerPolicy="no-referrer" />
+                        )}
+
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
+                            {/* Inner buttons need pointer-events-auto */}
+                            <div className="flex gap-2 pointer-events-auto">
+                                <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('thumbnail-upload-hero').click()}>
+                                    <ImageIcon className="w-4 h-4 mr-2" /> Change
+                                </Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={() => setShowCoverUrlInput(true)}>
+                                    <LinkIcon className="w-4 h-4 mr-2" /> URL
+                                </Button>
+                                <Button type="button" variant="destructive" size="sm" onClick={() => { if (form.thumbnailUrl) setPendingDeletions(prev => [...prev, form.thumbnailUrl]); handleChange({ target: { name: 'thumbnailUrl', value: '' } }); }}>
+                                    Remove
+                                </Button>
+                            </div>
                         </div>
                     </>
                 ) : (
@@ -567,7 +584,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                         <DialogTitle>Presentation Preview</DialogTitle>
                                                     </DialogHeader>
                                                     <div className="flex-1 w-full overflow-hidden relative">
-                                                        <iframe src={getEmbedUrl(form.presentationLink)} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen title="Preview" />
+                                                        <iframe src={getEmbedUrl(form.presentationLink, 'presentation')} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen referrerPolicy="no-referrer" title="Preview" />
                                                     </div>
                                                     <div className="p-2 flex justify-center">
                                                         <a href={form.presentationLink} target="_blank" rel="noopener noreferrer">
@@ -617,7 +634,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                         <DialogTitle>Video Preview</DialogTitle>
                                                     </DialogHeader>
                                                     <div className="flex-1 w-full overflow-hidden relative">
-                                                        <iframe src={getEmbedUrl(form.videoLink)} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen title="Preview" />
+                                                        <iframe src={getEmbedUrl(form.videoLink, 'video')} className="w-full h-full absolute inset-0" frameBorder="0" allowFullScreen referrerPolicy="no-referrer" title="Preview" />
                                                     </div>
                                                 </DialogContent>
                                             </Dialog>
@@ -717,7 +734,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                             </div>
 
                                             {/* Preview Button (Right of Input) */}
-                                            {(req.type === 'pdf' || req.type === 'doc' || req.type === 'image') && (
+                                            {(req.type === 'pdf' || req.type === 'doc' || req.type === 'image' || req.type === 'presentation') && (
                                                 <Dialog>
                                                     <DialogTrigger asChild>
                                                         <Button
@@ -726,9 +743,11 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                             size="icon"
                                                             disabled={!resourceValue}
                                                             className={`h-10 w-10 ${!resourceValue ? 'text-gray-300' : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'}`}
-                                                            title={req.type === 'image' ? 'Preview Image' : req.type === 'pdf' ? 'Preview PDF' : 'Preview Doc'}
+                                                            title={`Preview ${req.label}`}
                                                         >
-                                                            {req.type === 'image' ? <ImageIcon className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                                                            {req.type === 'image' ? <ImageIcon className="w-5 h-5" /> :
+                                                                req.type === 'presentation' ? <Presentation className="w-5 h-5" /> :
+                                                                    <FileText className="w-5 h-5" />}
                                                         </Button>
                                                     </DialogTrigger>
                                                     {resourceValue && (
@@ -747,6 +766,7 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                                         src={getDocViewerUrl(resourceValue)}
                                                                         className="w-full h-full"
                                                                         frameBorder="0"
+                                                                        referrerPolicy="no-referrer"
                                                                     />
                                                                     <div className="absolute bottom-2 right-2 text-[10px] text-gray-500 bg-white/80 px-2 rounded pointer-events-none">
                                                                         Requires public link
@@ -754,13 +774,39 @@ export default function TopicSubmissionForm({ topicId, topicConfig, existingSubm
                                                                 </div>
                                                             )}
 
+                                                            {req.type === 'presentation' && (
+                                                                <div className="relative w-full h-full bg-black">
+                                                                    <iframe
+                                                                        src={getEmbedUrl(resourceValue, req.type)}
+                                                                        className="w-full h-full"
+                                                                        frameBorder="0"
+                                                                        allowFullScreen
+                                                                        referrerPolicy="no-referrer"
+                                                                    />
+                                                                </div>
+                                                            )}
+
                                                             {req.type === 'image' && (
-                                                                /* eslint-disable-next-line @next/next/no-img-element */
-                                                                <img
-                                                                    src={resourceValue}
-                                                                    alt="Preview"
-                                                                    className="max-h-[85vh] max-w-full rounded-lg shadow-2xl"
-                                                                />
+                                                                <div className="w-full h-full flex items-center justify-center">
+                                                                    {isEmbeddable(resourceValue) ? (
+                                                                        <div className="relative w-full h-full bg-black">
+                                                                            <iframe
+                                                                                src={getEmbedUrl(resourceValue, 'image')}
+                                                                                className="w-full h-full"
+                                                                                frameBorder="0"
+                                                                                allowFullScreen
+                                                                                referrerPolicy="no-referrer"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                                                        <img
+                                                                            src={resourceValue}
+                                                                            alt="Preview"
+                                                                            className="max-h-[85vh] max-w-full rounded-lg shadow-2xl"
+                                                                        />
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </DialogContent>
                                                     )}
