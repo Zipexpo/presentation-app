@@ -76,6 +76,7 @@ const topicSchema = new mongoose.Schema({
       label: { type: String }, // e.g., "Creativity"
       maxScore: { type: Number, default: 10 }
     }],
+    surveyWeight: { type: Number, default: 1 }, // Weight for normal survey
     surveyQuestions: [surveyQuestionSchema],
     allowComments: { type: Boolean, default: true },
     allowGuest: { type: Boolean, default: false },
@@ -88,6 +89,7 @@ const topicSchema = new mongoose.Schema({
     // Special Evaluation (e.g. for Judges/Teachers)
     specialEvaluationConfig: {
       enabled: { type: Boolean, default: false },
+      weight: { type: Number, default: 1 }, // Weight for special evaluation
       evaluatorEmails: [{ type: String }], // List of emails allowed to see this view
       surveyQuestions: [surveyQuestionSchema]
     }

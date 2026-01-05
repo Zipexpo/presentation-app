@@ -100,7 +100,7 @@ export default function TopicDetailPage() {
 
           // Populate edit form
           // Auto-migrate Logic
-          let presConfig = dataTopic.topic.presentationConfig || { durationPerProject: 10, gradingRubric: [], gradingType: 'survey', surveyQuestions: [] };
+          let presConfig = dataTopic.topic.presentationConfig || { durationPerProject: 10, gradingRubric: [], gradingType: 'survey', surveyQuestions: [], surveyWeight: 1, specialEvaluationConfig: { weight: 1 } };
 
           if ((!presConfig.gradingType || presConfig.gradingType === 'rubric') && presConfig.gradingRubric?.length > 0 && (!presConfig.surveyQuestions || presConfig.surveyQuestions.length === 0)) {
             // Migrate Rubric to Survey
@@ -493,6 +493,18 @@ export default function TopicDetailPage() {
                       questions={editForm.presentationConfig?.surveyQuestions || []}
                       onChange={(newQs) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyQuestions: newQs, gradingType: 'survey' } }))}
                     />
+                    <div>
+                      <Label className="text-xs font-bold text-slate-500 uppercase">Normal Survey Weight</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={editForm.presentationConfig?.surveyWeight ?? 1}
+                        onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, surveyWeight: Number(e.target.value) } }))}
+                        className="bg-white/50 h-9 w-32"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Weight of normal audience votes in the final score.</p>
+                    </div>
                   </div>
                 </TabsContent>
 
@@ -529,6 +541,19 @@ export default function TopicDetailPage() {
                               setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, specialEvaluationConfig: { ...(p.presentationConfig?.specialEvaluationConfig || {}), evaluatorEmails: emails } } }))
                             }}
                           />
+                        </div>
+
+                        <div>
+                          <Label className="text-indigo-800 font-bold mb-1 block">Evaluator Weight</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={editForm.presentationConfig?.specialEvaluationConfig?.weight ?? 1}
+                            onChange={(e) => setEditForm(p => ({ ...p, presentationConfig: { ...p.presentationConfig, specialEvaluationConfig: { ...(p.presentationConfig?.specialEvaluationConfig || {}), weight: Number(e.target.value) } } }))}
+                            className="bg-white border-indigo-200 h-9 w-32 focus:ring-indigo-500"
+                          />
+                          <p className="text-[10px] text-indigo-400 mt-1">Weight of these evaluators in the final score.</p>
                         </div>
 
                         <div>

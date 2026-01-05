@@ -380,6 +380,74 @@ const PresentationSidebar = memo(function PresentationSidebar({
                                     Live Scores
                                     <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
                                 </div>
+
+                                {(() => {
+                                    // Weighted Score Calculation
+                                    const normalReviews = [];
+                                    const targetedReviews = [];
+
+                                    const evaluatorEmails = specialConfig?.evaluatorEmails || [];
+                                    const isTargetedEnabled = specialConfig?.enabled;
+
+                                    projectReviews.forEach(r => {
+                                        let isTargeted = false;
+                                        if (isTargetedEnabled) {
+                                            if (r.userType === 'teacher') isTargeted = true;
+                                            if (r.reviewerEmail && evaluatorEmails.includes(r.reviewerEmail)) isTargeted = true;
+                                        }
+
+                                        if (isTargeted) targetedReviews.push(r);
+                                        else normalReviews.push(r);
+                                    });
+
+                                    const calcAvg = (revs, maxVal) => {
+                                        if (!revs.length) return 0;
+                                        let sum = 0;
+                                        revs.forEach(r => {
+                                            const total = r.scores?.reduce((a, b) => a + (Number(b.score) || 0), 0) || 0;
+                                            const avg = r.scores?.length ? total / r.scores.length : 0;
+                                            sum += (avg / maxVal) * 10; // Normalize to 10
+                                        });
+                                        return sum / revs.length;
+                                    };
+
+                                    const normalAvg = calcAvg(normalReviews, standardMax);
+                                    const targetedAvg = calcAvg(targetedReviews, specialMax);
+
+                                    const normalWeight = Number(topic.presentationConfig?.surveyWeight) || 1;
+                                    const targetedWeight = Number(specialConfig?.weight) || 1;
+
+                                    let finalScore = 0;
+                                    if (projectReviews.length > 0) {
+                                        let totalWeight = 0;
+                                        let weightedSum = 0;
+
+                                        if (normalReviews.length > 0) {
+                                            weightedSum += normalAvg * normalWeight;
+                                            totalWeight += normalWeight;
+                                        }
+                                        if (targetedReviews.length > 0) {
+                                            weightedSum += targetedAvg * targetedWeight;
+                                            totalWeight += targetedWeight;
+                                        }
+
+                                        if (totalWeight > 0) {
+                                            finalScore = weightedSum / totalWeight;
+                                        }
+                                    }
+
+                                    return (
+                                        <div className="flex flex-col items-center mb-2">
+                                            <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                                                {finalScore > 0 ? finalScore.toFixed(1) : '-'}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 font-mono">
+                                                AVG WEIGHTED SCORE
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
                                 <ScoreBeeswarmViz reviews={processedReviews} width={340} height={100} maxScore={maxScoreDomain} />
                             </div>
                         </div>
