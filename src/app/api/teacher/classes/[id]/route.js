@@ -54,8 +54,9 @@ export async function POST(request, { params }) {
                 continue;
             }
 
-            const email = student.email.toLowerCase();
-            const studentId = student.studentId || null;
+            const email = student.email.trim().toLowerCase();
+            const name = student.name.trim();
+            const studentId = student.studentId ? String(student.studentId).trim() : null;
 
             // 1. Check if user exists
             let user = await User.findOne({
@@ -89,7 +90,7 @@ export async function POST(request, { params }) {
 
                 try {
                     user = await User.create({
-                        name: student.name,
+                        name: name,
                         email: email,
                         username: email, // Use email as username
                         studentId: studentId,
