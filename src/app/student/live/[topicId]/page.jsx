@@ -39,7 +39,7 @@ export default function StudentLivePage() {
     // Guest Identity State
     const [guestName, setGuestName] = useState('')
     const [guestId, setGuestId] = useState('')
-    console.log(form.presentationLink)
+
     // Load/Create Guest Identity
     useEffect(() => {
         if (typeof window !== 'undefined') {
