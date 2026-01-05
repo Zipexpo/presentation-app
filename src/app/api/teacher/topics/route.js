@@ -61,12 +61,27 @@ export async function POST(request) {
       presentationDate: new Date(presentationDate),
       submissionConfig: submissionConfig || {},
       classId: classId || undefined,
+      presentationConfig: {
+        gradingType: 'survey',
+        surveyQuestions: [],
+        gradingRubric: [],
+        surveyWeight: 1,
+        specialEvaluationConfig: {
+          enabled: false,
+          weight: 1,
+          evaluatorEmails: [],
+          surveyQuestions: []
+        },
+        durationPerProject: 10,
+        questionDuration: 5,
+        breakDuration: 2
+      }
     });
 
     return NextResponse.json(topic.toObject(), { status: 201 });
   } catch (error) {
     console.error('Error creating topic:', error);
-    return NextResponse.json({ error: 'Failed to create topic' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to create topic' }, { status: 500 });
   }
 }
 
