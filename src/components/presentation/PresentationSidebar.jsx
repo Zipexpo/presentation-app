@@ -421,7 +421,16 @@ const PresentationSidebar = memo(function PresentationSidebar({
 
                                     let finalScore = 0;
                                     if (projectReviews.length > 0) {
-                                        finalScore = (normalAvg*normalWeight + targetedAvg*targetedWeight)/(normalWeight + targetedWeight);
+                                        let sumWeights = 0;
+                                        if (normalReviews.length){
+                                            finalScore += normalAvg * normalWeight;
+                                            sumWeights += normalWeight;
+                                        }
+                                        if (targetedReviews.length){
+                                            finalScore += targetedAvg * targetedWeight;
+                                            sumWeights += targetedWeight;
+                                        }
+                                        finalScore /= sumWeights;
                                     }
 
                                     return (
