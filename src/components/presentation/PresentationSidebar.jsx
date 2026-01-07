@@ -10,6 +10,8 @@ import { Allotment } from "allotment";
 import ResourceLinkItem from './ResourceLinkItem';
 import ScoreBeeswarmViz from './ScoreBeeswarmViz';
 
+
+
 const PresentationSidebar = memo(function PresentationSidebar({
     isSidebarOpen,
     topic,
@@ -419,21 +421,7 @@ const PresentationSidebar = memo(function PresentationSidebar({
 
                                     let finalScore = 0;
                                     if (projectReviews.length > 0) {
-                                        let totalWeight = 0;
-                                        let weightedSum = 0;
-
-                                        if (normalReviews.length > 0) {
-                                            weightedSum += normalAvg * normalWeight;
-                                            totalWeight += normalWeight;
-                                        }
-                                        if (targetedReviews.length > 0) {
-                                            weightedSum += targetedAvg * targetedWeight;
-                                            totalWeight += targetedWeight;
-                                        }
-
-                                        if (totalWeight > 0) {
-                                            finalScore = weightedSum / totalWeight;
-                                        }
+                                        finalScore = (normalAvg*normalWeight + targetedAvg*targetedWeight)/(normalWeight + targetedWeight);
                                     }
 
                                     return (
