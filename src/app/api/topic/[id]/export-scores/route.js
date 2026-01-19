@@ -111,6 +111,7 @@ export async function GET(request, { params }) {
         reviews.forEach(review => {
             const project = projectMap[review.projectId.toString()];
             const rowData = {
+                'Group Number': project ? project.groupNumber : '',
                 'Project Name': project ? project.projectName : 'Unknown Project',
                 'Group Name': project ? project.groupName : '',
                 'Reviewer Name': review.reviewerName || 'Anonymous',
@@ -140,7 +141,7 @@ export async function GET(request, { params }) {
             quotes: true, // Force quotes to avoid issues with commas in text
         });
 
-        return new NextResponse(csv, {
+        return new NextResponse('\uFEFF' + csv, {
             status: 200,
             headers: {
                 'Content-Type': 'text/csv',
