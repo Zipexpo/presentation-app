@@ -141,7 +141,10 @@ export async function GET(request, { params }) {
             quotes: true, // Force quotes to avoid issues with commas in text
         });
 
-        return new NextResponse('\uFEFF' + csv, {
+        // Prepend BOM and Excel separator instruction
+        const csvContent = '\uFEFFsep=,\n' + csv;
+
+        return new NextResponse(csvContent, {
             status: 200,
             headers: {
                 'Content-Type': 'text/csv',
