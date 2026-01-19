@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import FeedbackModal from '@/components/ui/FeedbackModal'
 import PresetManager from '@/components/teacher/PresetManager'
 import EvaluationEditor from '@/components/teacher/EvaluationEditor'
-import { ExternalLink, Video, FileText, ImageIcon, Calendar, Clock, Edit3, ArrowLeft, LayoutGrid, List, Search, Filter, Plus, X, AlertTriangle, Trash2, Share2 } from 'lucide-react'
+import { ExternalLink, Video, FileText, ImageIcon, Calendar, Clock, Edit3, ArrowLeft, LayoutGrid, List, Search, Filter, Plus, X, AlertTriangle, Trash2, Share2, Download } from 'lucide-react'
 import { getGoogleDriveDirectLink, getGoogleDrivePreviewLink } from '@/lib/utils'
 
 export default function TopicDetailPage() {
@@ -305,6 +305,9 @@ export default function TopicDetailPage() {
           )}
           <Button onClick={() => router.push(`/presentation/${id}`)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
             <Video className="w-4 h-4 mr-2" /> Start Presentation
+          </Button>
+          <Button onClick={() => window.open(`/api/topic/${id}/export-scores`, '_blank')} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200">
+            <Download className="w-4 h-4 mr-2" /> Download Scores
           </Button>
         </div>
       </div>
