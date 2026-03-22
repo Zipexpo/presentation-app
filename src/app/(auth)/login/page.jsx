@@ -61,6 +61,15 @@ function LoginForm() {
           </Link>
         </p>
       </div>
+      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md">
+        <div className="flex">
+          <div className="ml-3">
+            <p className="text-sm text-amber-800 font-medium">
+              School accounts <span className="font-bold">(@student.hcmus)</span> are currently not available for direct login. Please use the provided account and password.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {error && (
         <Alert variant="destructive">
