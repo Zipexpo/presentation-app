@@ -34,37 +34,52 @@ const PresentationSidebar = memo(function PresentationSidebar({
     const filteredReviews = projectReviews.filter(r => filterType === 'all' || r.feedbackType === filterType);
 
     // Calculate Dynamic Max Score based on Config
-    // Helper to calc max per question
-    const calculateMaxPerQuestion = (questions) => {
-        if (!questions || !questions.length) return 10;
-        let totalMax = 0;
-        let itemCount = 0;
-        questions.forEach(q => {
-            if (q.type === 'matrix') {
-                const maxBase = Math.max(...(q.columns?.map(c => c.baseScore ?? c.score ?? 0) || [0]));
-                const rows = q.rows || [];
-                rows.forEach(r => {
-                    const w = r.weight ?? 1;
-                    totalMax += maxBase * w;
-                    itemCount++;
-                });
-            } else if (q.type === 'rubric') {
-                const max = Math.max(...(q.options?.map(o => o.score) || [0]));
-                totalMax += max;
-                itemCount++;
-            } else if (q.type === 'scale') {
-                totalMax += (q.scaleConfig?.max || 5);
-                itemCount++;
-            } else if (q.type === 'rating') {
-                totalMax += 5;
-                itemCount++;
-            } else if (q.type === 'choice') {
-                const max = Math.max(...(q.options?.map(o => o.score) || [0]));
-                totalMax += max;
-                itemCount++;
+    const calculateMaxScore = (questions) => {
+        if (!questions || !Array.isArray(questions)) return 0;
+        
+        return questions.reduce((total, q) => {
+            let qMax = 0;
+            switch (q.type) {
+                case 'scale':
+                case 'rating':
+                    qMax = q.scaleConfig?.max || 5;
+                    break;
+                case 'choice':
+                    if (q.options && q.options.length) {
+                        qMax = Math.max(...q.options.map(o => (typeof o.score === 'number' ? o.score : o.baseScore) || 0));
+                    }
+                    break;
+                case 'matrix':
+                    if (q.rows && q.rows.length) {
+                         let matrixTotal = 0;
+                         q.rows.forEach(row => {
+                             const rowWeight = typeof row.weight === 'number' ? row.weight : 1;
+                             let rowMax = 0;
+                             if (q.columns && q.columns.length) {
+                                  rowMax = Math.max(...q.columns.map(c => (typeof c.score === 'number' ? c.score : c.baseScore) || 0));
+                             } else if (q.options && q.options.length) {
+                                  rowMax = Math.max(...q.options.map(o => (typeof o.score === 'number' ? o.score : o.baseScore) || 0));
+                             } else if (row.cells && row.cells.length) {
+                                 rowMax = Math.max(...row.cells.map(c => (typeof c.score === 'number' ? c.score : c.baseScore) || 0));
+                             }
+                             matrixTotal += (rowMax * rowWeight);
+                        });
+                        qMax = matrixTotal;
+                    }
+                    break;
+                case 'rubric':
+                     if (q.options && q.options.length) {
+                        qMax = Math.max(...q.options.map(o => (typeof o.score === 'number' ? o.score : o.baseScore) || 0));
+                    }
+                    break;
+                case 'text':
+                    qMax = q.textConfig?.maxScore || 0;
+                    break;
+                default:
+                    break;
             }
-        });
-        return itemCount > 0 ? (totalMax / itemCount) : 10;
+            return total + qMax;
+        }, 0);
     };
 
     // 1. Standard Config Max
@@ -72,30 +87,29 @@ const PresentationSidebar = memo(function PresentationSidebar({
     if (!standardQuestions.length && topic.presentationConfig?.gradingRubric?.length) {
         standardQuestions = topic.presentationConfig.gradingRubric.map(r => ({ type: 'rubric', options: [{ score: r.maxScore || 10 }] }));
     }
-    const standardMax = calculateMaxPerQuestion(standardQuestions);
+    const standardMax = calculateMaxScore(standardQuestions);
 
     // 2. Special Config Max
     const specialConfig = topic.presentationConfig?.specialEvaluationConfig || topic.specialEvaluationConfig;
-    const specialQuestions = specialConfig?.enabled ? specialConfig.surveyQuestions : [];
-    const specialMax = calculateMaxPerQuestion(specialQuestions);
+    const specialQuestions = specialConfig?.enabled ? specialConfig.surveyQuestions : studentQuestions;
+    const specialMax = calculateMaxScore(specialQuestions);
 
     // 3. Normalize Reviews to 0-10 Scale
     const processedReviews = projectReviews.map(r => {
         if (!r.scores || r.scores.length === 0) return { ...r, normalizedScore: 0 };
 
-        const totalScore = r.scores.reduce((acc, s) => acc + (Number(s.score) || 0), 0);
-        const rawAvg = totalScore / r.scores.length;
+        const totalScore = r.scores.reduce((acc, s) => acc + (typeof s.score === 'number' ? s.score : 0), 0);
 
         // Heuristic to detect Special Config
         let maxForReview = standardMax;
         if (specialConfig?.enabled) {
             if (r.userType === 'teacher') maxForReview = specialMax;
-            else if (rawAvg > standardMax && specialMax > standardMax) maxForReview = specialMax;
+            else if (r.reviewerEmail && specialConfig.evaluatorEmails?.includes(r.reviewerEmail)) maxForReview = specialMax;
         }
 
         return {
             ...r,
-            normalizedScore: (rawAvg / maxForReview) * 10
+            normalizedScore: maxForReview > 0 ? (totalScore / maxForReview) * 10 : 0
         };
     });
 
@@ -405,12 +419,14 @@ const PresentationSidebar = memo(function PresentationSidebar({
                                     const calcAvg = (revs, maxVal) => {
                                         if (!revs.length) return 0;
                                         let sum = 0;
+                                        let count = 0;
                                         revs.forEach(r => {
-                                            const total = r.scores?.reduce((a, b) => a + (Number(b.score) || 0), 0) || 0;
-                                            const avg = r.scores?.length ? total / r.scores.length : 0;
-                                            sum += (avg / maxVal) * 10; // Normalize to 10
+                                            if (!r.scores || r.scores.length === 0) return;
+                                            const total = r.scores.reduce((a, b) => a + (typeof b.score === 'number' ? b.score : 0), 0);
+                                            sum += maxVal > 0 ? (total / maxVal) * 10 : 0;
+                                            count++;
                                         });
-                                        return sum / revs.length;
+                                        return count > 0 ? sum / count : 0;
                                     };
 
                                     const normalAvg = calcAvg(normalReviews, standardMax);
@@ -420,17 +436,15 @@ const PresentationSidebar = memo(function PresentationSidebar({
                                     const targetedWeight = Number(specialConfig?.weight) || 1;
 
                                     let finalScore = 0;
-                                    if (projectReviews.length > 0) {
-                                        let sumWeights = 0;
-                                        if (normalReviews.length){
-                                            finalScore += normalAvg * normalWeight;
-                                            sumWeights += normalWeight;
-                                        }
-                                        if (targetedReviews.length){
-                                            finalScore += targetedAvg * targetedWeight;
-                                            sumWeights += targetedWeight;
-                                        }
-                                        finalScore /= sumWeights;
+                                    const hasNormal = normalReviews.some(r => r.scores && r.scores.length > 0);
+                                    const hasTargeted = targetedReviews.some(r => r.scores && r.scores.length > 0);
+                                    
+                                    if (!hasNormal && hasTargeted) {
+                                        finalScore = targetedAvg;
+                                    } else if (hasNormal && !hasTargeted) {
+                                        finalScore = normalAvg;
+                                    } else if (hasNormal && hasTargeted) {
+                                        finalScore = ((normalAvg * normalWeight) + (targetedAvg * targetedWeight)) / (normalWeight + targetedWeight);
                                     }
 
                                     return (

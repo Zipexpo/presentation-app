@@ -33,9 +33,14 @@ export function Navbar() {
             </span>
           </Link>
           {role === 'admin' && (
-            <Link href="/admin" className="text-sm text-gray-600 hover:underline">
-              Admin
-            </Link>
+            <>
+              <Link href="/admin" className="text-sm text-gray-600 hover:underline">
+                Admin
+              </Link>
+              <Link href="/admin/api-keys" className="text-sm text-gray-600 hover:underline">
+                API Keys
+              </Link>
+            </>
           )}
           {role === 'teacher' && (
             <>

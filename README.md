@@ -34,3 +34,27 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+---
+
+## External API Documentation
+
+This project exposes a secure external API to allow third-party applications (like Mobile Apps or Custom Dashboards) to access and manage users.
+
+### Authentication
+All requests to `/api/external/*` must include an API Key generated from the Admin Dashboard (`/admin/api-keys`).
+
+**Header Format:**
+```http
+x-api-key: ext_YOUR_SECRET_KEY_HERE
+```
+
+### Endpoints
+1. **POST `/api/external/auth/login`**: Verifies user email & password. Returns a User ID for account linking.
+2. **GET `/api/external/users`**: Fetch all users (supports `?role=student` filter).
+3. **POST `/api/external/users`**: Create a new user account.
+4. **GET `/api/external/users/[id]`**: Fetch specific user details.
+5. **PUT `/api/external/users/[id]`**: Update user profile/role.
+6. **DELETE `/api/external/users/[id]`**: Permanently delete an account.
+
+For full payload examples and tutorials, refer to the in-app guide at `/admin/api-docs`.
