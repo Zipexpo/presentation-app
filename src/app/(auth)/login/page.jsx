@@ -65,7 +65,7 @@ function LoginForm() {
         <div className="flex">
           <div className="ml-3">
             <p className="text-sm text-amber-800 font-medium">
-              School accounts <span className="font-bold">(@student.hcmus)</span> are currently not available for direct login. Please use the provided account and password.
+              School accounts <span className="font-bold">(@student.hcmus.edu.vn)</span> are currently not available for direct login. Please use the provided account and password.
             </p>
           </div>
         </div>
