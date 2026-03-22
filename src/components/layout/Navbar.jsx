@@ -57,9 +57,9 @@ export function Navbar() {
         <div className="flex items-center gap-3 text-sm">
           {status === 'authenticated' ? (
             <>
-              <span className="hidden sm:inline text-gray-500">
+              <Link href="/profile" className="hidden sm:inline text-gray-500 hover:text-indigo-600 font-medium transition-colors">
                 {session?.user?.email}
-              </span>
+              </Link>
               <Link href="/logout">
                 <Button variant="outline" size="sm">
                   Logout
