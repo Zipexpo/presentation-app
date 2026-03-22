@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { connectToDB } from '@/lib/db';
 import ApiKey from '@/models/ApiKey';
 
 /**
@@ -19,7 +19,7 @@ export async function validateApiKey(req) {
     }
 
     try {
-        await connectDB();
+        await connectToDB();
 
         const keyHash = ApiKey.hashKey(apiKeyHeader);
         

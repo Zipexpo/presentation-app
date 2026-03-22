@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import connectDB from '@/lib/db';
+import { connectToDB } from '@/lib/db';
 import ApiKey from '@/models/ApiKey';
 import crypto from 'crypto';
 
@@ -12,7 +12,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        await connectDB();
+        await connectToDB();
         
         // Return keys without the actual hash for security, plus stringify ObjectIds if needed
         const keys = await ApiKey.find()
@@ -40,7 +40,7 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
 
-        await connectDB();
+        await connectToDB();
 
         // 1. Generate a secure random API key. Format: ext_ + 32 random hex chars
         const rawKey = `ext_${crypto.randomBytes(24).toString('hex')}`;
@@ -90,7 +90,7 @@ export async function DELETE(req) {
             return NextResponse.json({ error: 'API Key ID is required' }, { status: 400 });
         }
 
-        await connectDB();
+        await connectToDB();
 
         const deleted = await ApiKey.findByIdAndDelete(id);
         if (!deleted) {

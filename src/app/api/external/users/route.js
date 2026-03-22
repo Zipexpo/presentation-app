@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import { validateApiKey } from '@/lib/apiAuth';
 import bcrypt from 'bcryptjs';
@@ -10,7 +10,7 @@ export async function GET(req) {
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {
-        await connectDB();
+        await connectToDB();
         const url = new URL(req.url);
         const role = url.searchParams.get('role');
 
@@ -42,7 +42,7 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Email, name, and password are required' }, { status: 400 });
         }
 
-        await connectDB();
+        await connectToDB();
 
         // Check for existing user
         const existingUser = await User.findOne({ email });

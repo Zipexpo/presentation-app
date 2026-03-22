@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Users, Globe2, Layers3, PlayCircle } from 'lucide-react'
+import { Users, Globe2, Layers3, PlayCircle, Key, FileText } from 'lucide-react'
 
 const cards = [
   {
@@ -31,6 +31,18 @@ const cards = [
     title: 'Presentation Sessions',
     description: 'Monitor and manage active presentation sessions.',
     icon: PlayCircle,
+  },
+  {
+    href: '/admin/api-keys',
+    title: 'API Key Management',
+    description: 'Generate and revoke secret keys for external application access.',
+    icon: Key,
+  },
+  {
+    href: '/admin/api-docs',
+    title: 'API Documentation',
+    description: 'Detailed guides and endpoint references for developers.',
+    icon: FileText,
   },
 ]
 

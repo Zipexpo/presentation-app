@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import { validateApiKey } from '@/lib/apiAuth';
 
@@ -19,7 +19,7 @@ export async function POST(req, { params }) {
             );
         }
 
-        await connectDB();
+        await connectToDB();
         
         // 1. Verify user exists
         const user = await User.findById(params.id);

@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { redirect } from 'next/navigation';
-import connectDB from '@/lib/db';
+import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import AccountLinker from './AccountLinker';
 import { User as UserIcon, Mail, ShieldAlert } from 'lucide-react';
@@ -10,7 +10,7 @@ export default async function ProfilePage() {
     const session = await getServerSession(authOptions);
     if (!session) redirect('/login');
 
-    await connectDB();
+    await connectToDB();
     const user = await User.findById(session.user.id).lean();
 
     if (!user) {

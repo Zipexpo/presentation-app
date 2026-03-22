@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import { validateApiKey } from '@/lib/apiAuth';
 import bcrypt from 'bcryptjs';
@@ -10,7 +10,7 @@ export async function GET(req, { params }) {
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {
-        await connectDB();
+        await connectToDB();
         const user = await User.findById(params.id).select('-password').lean();
 
         if (!user) {
@@ -31,7 +31,7 @@ export async function PUT(req, { params }) {
 
     try {
         const body = await req.json();
-        await connectDB();
+        await connectToDB();
 
         // Prevent password from being updated via this plain mechanism without careful handling
         if (body.password) {
@@ -61,7 +61,7 @@ export async function DELETE(req, { params }) {
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {
-        await connectDB();
+        await connectToDB();
 
         // Warning: This permanently deletes the user. In a real app, 
         // you might want to consider cascade logic or soft deletes depending on relationships.

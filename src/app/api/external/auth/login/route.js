@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import { validateApiKey } from '@/lib/apiAuth';
 import bcrypt from 'bcryptjs';
@@ -17,7 +17,7 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
         }
 
-        await connectDB();
+        await connectToDB();
 
         // Find user and explicitly select password (which is often correctly deselected by default)
         const user = await User.findOne({ email }).select('+password');
