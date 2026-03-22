@@ -9,6 +9,7 @@ import { Star, MessageSquare, Check, RefreshCw, Loader2, Video, FileText, Code, 
 import { useSession } from 'next-auth/react'
 import StudentTimer from '@/components/student/StudentTimer'
 import { getEmbedUrl, isEmbeddable } from '@/lib/utils'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function StudentLivePage() {
     const { topicId } = useParams()
@@ -115,8 +116,25 @@ export default function StudentLivePage() {
         };
 
         poll(); // Initial
-        const timer = setInterval(poll, 5000); // Every 5s
-        return () => clearInterval(timer);
+
+        // Establish Supabase Realtime WebSocket Connection
+        const channel = supabase
+            .channel(`topic_${topicId}`)
+            .on(
+                'broadcast',
+                { event: 'state_changed' },
+                (payload) => {
+                    console.log('Received state_changed broadcast via Supabase:', payload);
+                    poll(); // Re-fetch the slide/state only when the teacher changes it
+                }
+            )
+            .subscribe((status) => {
+                console.log('Supabase subscription status (Student):', status);
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [topicId, status, router]);
 
     // Fetch reviews when project or identity changes

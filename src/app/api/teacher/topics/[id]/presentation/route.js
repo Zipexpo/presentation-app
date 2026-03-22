@@ -4,6 +4,7 @@ import { authOptions } from '../../../../auth/[...nextauth]/route';
 import { connectToDB } from '@/lib/db';
 import Topic from '@/models/Topic';
 import ProjectSubmission from '@/models/ProjectSubmission';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function POST(request, { params }) {
     const session = await getServerSession(authOptions);
@@ -182,5 +183,36 @@ export async function POST(request, { params }) {
     }
 
     const updatedTopic = await Topic.findByIdAndUpdate(id, update, { new: true });
+
+    // Broadcast the state change to all listening students via Supabase Realtime
+    try {
+        await new Promise((resolve) => {
+            const channel = supabase.channel(`topic_${id}`);
+            channel.subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'state_changed',
+                        payload: { action, timestamp: Date.now() }
+                    });
+                    supabase.removeChannel(channel);
+                    resolve();
+                } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                    console.error('[Supabase] Failed to subscribe to channel for broadcast');
+                    supabase.removeChannel(channel);
+                    resolve();
+                }
+            });
+            
+            // Safety timeout to prevent Vercel function from hanging
+            setTimeout(() => {
+                supabase.removeChannel(channel);
+                resolve();
+            }, 2500); 
+        });
+    } catch (err) {
+        console.error('[Supabase] Broadcast error:', err);
+    }
+
     return NextResponse.json(updatedTopic);
 }

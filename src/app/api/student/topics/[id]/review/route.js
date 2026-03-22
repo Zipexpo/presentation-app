@@ -4,6 +4,26 @@ import { authOptions } from '../../../../auth/[...nextauth]/route';
 import { connectToDB } from '@/lib/db';
 import PeerReview from '@/models/PeerReview';
 import Topic from '@/models/Topic';
+import { supabase } from '@/lib/supabaseClient';
+
+async function broadcastReviewUpdate(topicId) {
+    try {
+        await new Promise((resolve) => {
+            const channel = supabase.channel(`topic_${topicId}`);
+            channel.subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.send({ type: 'broadcast', event: 'new_review', payload: { timestamp: Date.now() } });
+                    supabase.removeChannel(channel);
+                    resolve();
+                } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                    supabase.removeChannel(channel);
+                    resolve();
+                }
+            });
+            setTimeout(() => { supabase.removeChannel(channel); resolve(); }, 2500);
+        });
+    } catch (err) { console.error('[Supabase] Broadcast error:', err); }
+}
 
 export async function POST(request, { params }) {
     const session = await getServerSession(authOptions);
@@ -132,6 +152,9 @@ export async function POST(request, { params }) {
             });
         }
     }
+    if (result) {
+        await broadcastReviewUpdate(id);
+    }
 
     return NextResponse.json(result || { success: true });
 }
@@ -202,6 +225,7 @@ export async function PUT(request, { params }) {
 
     if (!result) return NextResponse.json({ error: 'Review not found or unauthorized' }, { status: 404 });
 
+    await broadcastReviewUpdate(id);
     return NextResponse.json(result);
 }
 
@@ -247,5 +271,6 @@ export async function DELETE(request, { params }) {
 
     if (!result) return NextResponse.json({ error: 'Review not found or unauthorized' }, { status: 404 });
 
+    await broadcastReviewUpdate(id);
     return NextResponse.json({ success: true });
 }

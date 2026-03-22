@@ -12,6 +12,7 @@ import PresentationTimer from '@/components/presentation/PresentationTimer'
 import PresentationViewer from '@/components/presentation/PresentationViewer'
 import PresentationSidebar from '@/components/presentation/PresentationSidebar'
 import PresentationSettingsDialog from '@/components/presentation/PresentationSettingsDialog'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function PresentationPage() {
     const { id } = useParams()
@@ -84,8 +85,30 @@ export default function PresentationPage() {
         };
 
         fetchReviews(); // Initial
-        const timer = setInterval(fetchReviews, 5000); // Poll every 5s
-        return () => clearInterval(timer);
+        
+        // Supabase Realtime Subscription for incoming reviews
+        const channel = supabase
+            .channel(`topic_${id}`)
+            .on(
+                'broadcast',
+                { event: 'new_review' },
+                () => {
+                    fetchReviews(); // Re-fetch only when a new review comes in
+                }
+            )
+            .on(
+                'broadcast',
+                { event: 'state_changed' },
+                () => {
+                    // Optional: Refetch topic state if needed 
+                    // (this page usually controls state, but good for multi-device sync)
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [id]);
 
     // Resource Sync Logic
