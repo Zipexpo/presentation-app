@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Key, Plus, Trash2, Copy, Check, Eye, AlertTriangle, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import FeedbackModal from '@/components/admin/FeedbackModal';
 import Link from 'next/link';
 
 export default function ApiKeysPage() {
@@ -66,18 +65,16 @@ export default function ApiKeysPage() {
 
             if (res.ok) {
                 const data = await res.json();
-                // We got the raw key back.
                 setGeneratedKey({ raw: data.apiKey, name: data.record.name });
-                // Optimistically add to list (only partial info exists)
                 setKeys([data.record, ...keys]);
                 setNewKeyName('');
                 setShowCreateModal(false);
             } else {
-                setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to generate key.' });
+                alert('Failed to generate key.');
             }
         } catch (error) {
             console.error(error);
-            setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Network error generating key.' });
+            alert('Network error generating key.');
         } finally {
             setGenerating(false);
         }
@@ -92,13 +89,12 @@ export default function ApiKeysPage() {
             const res = await fetch(`/api/admin/api-keys?id=${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setKeys(keys.filter(k => k._id !== id));
-                setFeedback({ isOpen: true, type: 'success', title: 'Revoked', message: 'API Key revoked successfully.' });
             } else {
-                setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Failed to revoke key.' });
+                alert('Failed to revoke key.');
             }
         } catch (error) {
             console.error(error);
-            setFeedback({ isOpen: true, type: 'error', title: 'Error', message: 'Network error revoking key.' });
+            alert('Network error revoking key.');
         }
     };
 
@@ -268,14 +264,6 @@ export default function ApiKeysPage() {
                     </form>
                 </DialogContent>
             </Dialog>
-
-            <FeedbackModal
-                isOpen={feedback.isOpen}
-                type={feedback.type}
-                title={feedback.title}
-                message={feedback.message}
-                onClose={() => setFeedback(f => ({ ...f, isOpen: false }))}
-            />
         </div>
     );
 }

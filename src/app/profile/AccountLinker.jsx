@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Check, Link as LinkIcon, Loader2 } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
-import { BsMicrosoft } from 'react-icons/bs'; // Need to make sure react-icons is used or I'll just use a generic icon
+import { Check, Link as LinkIcon, Loader2, Globe } from 'lucide-react';
 
 export default function AccountLinker({ linkedProviders }) {
     const [linkingGoogle, setLinkingGoogle] = useState(false);
@@ -31,8 +29,8 @@ export default function AccountLinker({ linkedProviders }) {
             {/* Google Provider Link Card */}
             <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-slate-50">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100">
-                        <FcGoogle className="w-6 h-6" />
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 font-bold text-xl text-blue-500">
+                        G
                     </div>
                     <div>
                         <h3 className="font-semibold text-slate-800">Google Account</h3>
