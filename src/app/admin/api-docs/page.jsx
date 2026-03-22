@@ -142,6 +142,23 @@ export default function ApiDocsPage() {
                     </p>
 
                     <div className="space-y-6">
+                        {/* LINK ACCOUNT */}
+                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl mt-6">
+                            <div className="flex flex-wrap gap-2 mb-2 items-center">
+                                <span className="bg-indigo-200 text-indigo-800 font-bold px-2 py-0.5 rounded text-xs uppercase tracking-wider">POST</span>
+                                <code className="bg-white text-slate-700 font-mono px-2 py-0.5 rounded text-sm border border-slate-200">/api/external/users/[id]/link</code>
+                                <span className="text-sm font-semibold text-indigo-800 ml-2">Push External Provider (Two-Way Link)</span>
+                            </div>
+                            <p className="text-slate-600 text-sm mb-2">Link a third-party OAuth provider (e.g., Google, Microsoft) directly to an existing Presentation App user.</p>
+                            <pre className="text-slate-600 text-sm font-mono bg-slate-100 p-2 rounded border border-slate-200">
+{`{ 
+  "provider": "google", 
+  "providerAccountId": "104230492304923049",
+  "email": "user.google@example.com"
+}`}
+                            </pre>
+                        </div>
+
                         {/* CREATE */}
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                             <div className="flex flex-wrap gap-2 mb-2 items-center">

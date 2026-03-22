@@ -55,6 +55,7 @@ x-api-key: ext_YOUR_SECRET_KEY_HERE
 3. **POST `/api/external/users`**: Create a new user account.
 4. **GET `/api/external/users/[id]`**: Fetch specific user details.
 5. **PUT `/api/external/users/[id]`**: Update user profile/role.
-6. **DELETE `/api/external/users/[id]`**: Permanently delete an account.
+6. **POST `/api/external/users/[id]/link`**: Link an external provider (OAuth) to a user account.
+7. **DELETE `/api/external/users/[id]`**: Permanently delete an account.
 
 For full payload examples and tutorials, refer to the in-app guide at `/admin/api-docs`.
