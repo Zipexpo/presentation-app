@@ -80,10 +80,15 @@ export default function TeacherTopicsPage() {
     setError('')
     setSaving(true)
     try {
+      const payload = {
+        ...form,
+        submissionDeadline: form.submissionDeadline ? new Date(form.submissionDeadline).toISOString() : '',
+        presentationDate: form.presentationDate ? new Date(form.presentationDate).toISOString() : ''
+      }
       const res = await fetch('/api/teacher/topics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) {

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
+import Class from '@/models/Class';
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -76,6 +77,12 @@ export async function DELETE(request) {
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
+
+  // Remove the user from any classes they are a part of
+  await Class.updateMany(
+    { students: id },
+    { $pull: { students: id } }
+  );
 
   return NextResponse.json({ message: 'User deleted successfully' });
 }

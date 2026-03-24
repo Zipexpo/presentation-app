@@ -117,8 +117,8 @@ export default function TopicDetailPage() {
           setEditForm({
             title: dataTopic.topic.title,
             description: dataTopic.topic.description,
-            submissionDeadline: dataTopic.topic.submissionDeadline ? new Date(dataTopic.topic.submissionDeadline).toISOString().slice(0, 16) : '',
-            presentationDate: dataTopic.topic.presentationDate ? new Date(dataTopic.topic.presentationDate).toISOString().slice(0, 16) : '',
+            submissionDeadline: dataTopic.topic.submissionDeadline ? (() => { const d = new Date(dataTopic.topic.submissionDeadline); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); })() : '',
+            presentationDate: dataTopic.topic.presentationDate ? (() => { const d = new Date(dataTopic.topic.presentationDate); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); })() : '',
             submissionConfig: {
               ...{
                 includeSourceCode: false, includeThumbnail: false, includeMaterials: false, includeGroupName: false, includeVideo: true, includePresentation: true,
@@ -170,10 +170,15 @@ export default function TopicDetailPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = {
+        ...editForm,
+        submissionDeadline: editForm.submissionDeadline ? new Date(editForm.submissionDeadline).toISOString() : '',
+        presentationDate: editForm.presentationDate ? new Date(editForm.presentationDate).toISOString() : ''
+      };
       const res = await fetch(`/api/teacher/topics/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
