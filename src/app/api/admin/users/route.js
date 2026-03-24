@@ -57,4 +57,26 @@ export async function PATCH(request) {
   });
 }
 
+export async function DELETE(request) {
+  const session = await requireAdmin();
+  if (!session) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json({ error: 'User id is required' }, { status: 400 });
+  }
+
+  await connectToDB();
+
+  const user = await User.findByIdAndDelete(id);
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
+
+  return NextResponse.json({ message: 'User deleted successfully' });
+}
 

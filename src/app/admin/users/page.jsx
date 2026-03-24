@@ -57,6 +57,24 @@ export default function AdminUsersPage() {
     }
   }
 
+  const deleteUser = async (id) => {
+    if (!confirm('Are you sure you want to delete this user?')) return
+    setSavingId(id)
+    try {
+      const res = await fetch(`/api/admin/users?id=${id}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        setUsers((prev) => prev.filter((u) => u._id !== id))
+      } else {
+        const data = await res.json()
+        console.error('Failed to delete user', data)
+      }
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   if (loading) {
     return <div className="p-6">Loading users...</div>
   }
@@ -107,7 +125,7 @@ export default function AdminUsersPage() {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -117,6 +135,14 @@ export default function AdminUsersPage() {
                     }
                   >
                     {user.active ? 'Deactivate' : 'Activate'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={savingId === user._id}
+                    onClick={() => deleteUser(user._id)}
+                  >
+                    Delete
                   </Button>
                 </td>
               </tr>
