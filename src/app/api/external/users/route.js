@@ -61,6 +61,27 @@ export async function POST(req) {
             studentId: studentId || undefined
         });
 
+        // Send the welcome email with credentials (best-effort — never block
+        // account creation on email delivery). External apps create accounts
+        // through this endpoint, so without this the student never gets notified.
+        let emailSent = false;
+        let emailError = null;
+        try {
+            const { sendAccountCreationEmail } = await import('@/lib/email');
+            const emailResult = await sendAccountCreationEmail(email, name, password, 'System');
+            emailSent = !!emailResult.success;
+            if (emailSent) {
+                newUser.accountCreationEmailSent = true;
+                await newUser.save();
+            } else {
+                emailError = emailResult.error;
+                console.error(`External create: failed to email ${email}:`, emailResult.error);
+            }
+        } catch (e) {
+            emailError = e.message;
+            console.error('External create: email error:', e);
+        }
+
         // Return profile without password
         const userProfile = {
             id: newUser._id,
@@ -71,7 +92,10 @@ export async function POST(req) {
             createdAt: newUser.createdAt
         };
 
-        return NextResponse.json({ success: true, user: userProfile }, { status: 201 });
+        return NextResponse.json(
+            { success: true, user: userProfile, emailSent, emailError },
+            { status: 201 }
+        );
 
     } catch (error) {
         console.error('Error creating external user:', error);

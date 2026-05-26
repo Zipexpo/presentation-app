@@ -113,7 +113,12 @@ export async function POST(request, { params }) {
                         await user.save();
                     } else {
                         console.error(`Failed to send email to ${email}: ${emailResult.error}`);
-                        // Don't fail the import, just log, user will see status in UI
+                        // Don't fail the import, but surface the reason so the
+                        // teacher knows why the student got no email.
+                        errors.push({
+                            student: { email, name },
+                            error: 'Account created but email failed: ' + emailResult.error,
+                        });
                     }
 
                 } catch (createErr) {
