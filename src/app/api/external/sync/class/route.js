@@ -42,11 +42,16 @@ export async function POST(req) {
         const consumed = await SyncLink.consume(code, 'export', externalRef);
         if (!consumed.ok) return NextResponse.json({ error: consumed.error }, { status: 403 });
 
+        // Raw ids first: a class can reference accounts that were since deleted, and populate()
+        // silently drops those. Comparing the two counts lets the caller say "4 of 12" instead of
+        // quietly syncing fewer people than the class appears to have.
+        const rawRefs = await Class.findById(consumed.link.classId).select('students').lean();
         const cls = await Class.findById(consumed.link.classId)
             .populate('teacherId', 'name email role studentId school faculty cohort')
             .populate('students', 'name email role studentId school faculty cohort')
             .lean();
         if (!cls) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+        const missingAccounts = (rawRefs?.students?.length ?? 0) - (cls.students?.length ?? 0);
 
         return NextResponse.json({
             success: true,
@@ -58,6 +63,8 @@ export async function POST(req) {
                 // external app whether to appoint them (e.g. as mentor) after the import.
                 teacher: cls.teacherId ? publicUser(cls.teacherId) : null,
                 students: (cls.students ?? []).map(publicUser),
+                // References to accounts that no longer exist — reported, never hidden.
+                missingAccounts,
             },
         });
     } catch (error) {
