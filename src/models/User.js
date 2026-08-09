@@ -42,6 +42,20 @@ const UserSchema = new mongoose.Schema({
     enum: ['student', 'teacher', 'admin'],
     required: true,
   },
+  // Institution fields — this app is the source of truth for identity, so external apps
+  // (e.g. Teamwo) read these instead of keeping their own copy.
+  school: {
+    type: String, // e.g. 'HCMUS'
+    trim: true,
+  },
+  faculty: {
+    type: String, // khoa/bộ môn
+    trim: true,
+  },
+  cohort: {
+    type: String, // khóa, e.g. 'K2024'
+    trim: true,
+  },
   profileCompleted: {
     type: Boolean,
     default: false,

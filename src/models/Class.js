@@ -4,6 +4,13 @@ const classSchema = new mongoose.Schema({
     name: { type: String, required: true },
     teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // Free-text note carried over from a synced external group. Mentors never present, so when a
+    // Teamwo team is synced in, its mentor/leader are recorded here instead of as students.
+    note: { type: String, default: '' },
+    // Link back to the external group this class is paired with (Teamwo team id), so repeated
+    // syncs update the same class instead of creating duplicates.
+    externalSource: { type: String },
+    externalTeamId: { type: String },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
