@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 
 // GET: Fetch a specific user
 export async function GET(req, { params }) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'users:read');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {
@@ -26,7 +26,7 @@ export async function GET(req, { params }) {
 
 // PUT: Update a specific user (e.g., role, name, studentId)
 export async function PUT(req, { params }) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'users:write');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {
@@ -57,7 +57,7 @@ export async function PUT(req, { params }) {
 
 // DELETE: Permanently delete a specific user account
 export async function DELETE(req, { params }) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'users:delete');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {

@@ -5,7 +5,7 @@ import { validateApiKey } from '@/lib/apiAuth';
 
 // POST: Link a third-party provider (e.g., google, azure-ad) to a specific user
 export async function POST(req, { params }) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'users:write');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {

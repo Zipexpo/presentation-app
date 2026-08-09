@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 
 // GET: Fetch a list of all users. Can filter by ?role=student or ?role=teacher
 export async function GET(req) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'users:read');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {
@@ -31,7 +31,7 @@ export async function GET(req) {
 
 // POST: Create a new user (Admin-level action from external app)
 export async function POST(req) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'users:write');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {

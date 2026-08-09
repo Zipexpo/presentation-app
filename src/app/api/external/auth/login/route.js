@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 export async function POST(req) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'auth:login');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {

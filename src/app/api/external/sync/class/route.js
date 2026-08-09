@@ -32,7 +32,7 @@ function publicUser(u) {
 
 // --- PULL: external app imports this class -------------------------------------------------
 export async function POST(req) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'sync:class');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {
@@ -68,7 +68,7 @@ export async function POST(req) {
 
 // --- PUSH: external app sends a group here --------------------------------------------------
 export async function PUT(req) {
-    const authResult = await validateApiKey(req);
+    const authResult = await validateApiKey(req, 'sync:class');
     if (!authResult.isValid) return authResult.errorResponse;
 
     try {

@@ -35,12 +35,23 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { name } = await req.json();
+        const { name, scopes } = await req.json();
         if (!name || typeof name !== 'string') {
             return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
 
         await connectToDB();
+
+        // Least privilege: only the scopes explicitly ticked are granted. Reject unknown ones
+        // rather than silently dropping them, so a typo can't quietly widen or narrow a key.
+        const valid = ApiKey.ALL_SCOPES.map((s) => s.id);
+        const granted = Array.isArray(scopes) && scopes.length > 0 ? scopes : undefined;
+        if (granted) {
+            const bad = granted.filter((s) => !valid.includes(s));
+            if (bad.length) {
+                return NextResponse.json({ error: `Unknown scope(s): ${bad.join(', ')}` }, { status: 400 });
+            }
+        }
 
         // 1. Generate a secure random API key. Format: ext_ + 32 random hex chars
         const rawKey = `ext_${crypto.randomBytes(24).toString('hex')}`;
@@ -55,7 +66,8 @@ export async function POST(req) {
             keyHash,
             prefix,
             name,
-            createdBy: session.user.id
+            createdBy: session.user.id,
+            ...(granted ? { scopes: granted } : {})
         });
 
         // We only return the RAW key ONCE. The client MUST copy it now.
@@ -66,12 +78,48 @@ export async function POST(req) {
                 _id: apiKeyRecord._id,
                 name: apiKeyRecord.name,
                 prefix: apiKeyRecord.prefix,
+                scopes: apiKeyRecord.scopes,
                 createdAt: apiKeyRecord.createdAt
             }
         });
 
     } catch (error) {
         console.error('Error generating API key:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+/** Narrow (or widen) an existing key's scopes — the only way to lock down legacy full-access keys. */
+export async function PATCH(req) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session || session.user.role !== 'admin') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { id, scopes } = await req.json();
+        if (!id || !Array.isArray(scopes)) {
+            return NextResponse.json({ error: 'id and scopes[] are required' }, { status: 400 });
+        }
+
+        await connectToDB();
+
+        const valid = ApiKey.ALL_SCOPES.map((s) => s.id);
+        const bad = scopes.filter((s) => !valid.includes(s));
+        if (bad.length) {
+            return NextResponse.json({ error: `Unknown scope(s): ${bad.join(', ')}` }, { status: 400 });
+        }
+
+        const updated = await ApiKey.findByIdAndUpdate(id, { scopes }, { new: true })
+            .select('-keyHash')
+            .lean();
+        if (!updated) {
+            return NextResponse.json({ error: 'API Key not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true, record: updated });
+    } catch (error) {
+        console.error('Error updating API key scopes:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
