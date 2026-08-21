@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { connectToDB } from '@/lib/db';
 import Class from '@/models/Class';
 import User from '@/models/User';
+import Topic from '@/models/Topic';
+import ProjectSubmission from '@/models/ProjectSubmission';
 import SyncLink from '@/models/SyncLink';
 import { validateApiKey } from '@/lib/apiAuth';
 
@@ -53,6 +55,34 @@ export async function POST(req) {
         if (!cls) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
         const missingAccounts = (rawRefs?.students?.length ?? 0) - (cls.students?.length ?? 0);
 
+        // A class is usually already divided into project groups, and that division — not the flat
+        // roster — is what the external app should mirror. Groups live on the submissions of the
+        // class's topic; with several topics the most recent one is the current grouping.
+        const topic = await Topic.findOne({ classId: cls._id })
+            .sort({ presentationDate: -1, createdAt: -1 })
+            .select('title')
+            .lean();
+        let groups = [];
+        if (topic) {
+            const subs = await ProjectSubmission.find({ topicId: topic._id })
+                .select('groupNumber groupName projectName members')
+                .sort({ groupNumber: 1 })
+                .lean();
+            groups = subs.map((g) => ({
+                id: String(g._id),
+                number: g.groupNumber ?? null,
+                name: g.groupName ?? '',
+                projectName: g.projectName ?? '',
+                members: (g.members ?? [])
+                    .filter((m) => m?.email)
+                    .map((m) => ({
+                        name: m.name ?? '',
+                        email: String(m.email).trim().toLowerCase(),
+                        studentId: m.studentId ?? null,
+                    })),
+            }));
+        }
+
         return NextResponse.json({
             success: true,
             class: {
@@ -65,6 +95,9 @@ export async function POST(req) {
                 students: (cls.students ?? []).map(publicUser),
                 // References to accounts that no longer exist — reported, never hidden.
                 missingAccounts,
+                // The class's current project groups (empty when the class has no topic yet).
+                topicTitle: topic?.title ?? null,
+                groups,
             },
         });
     } catch (error) {
