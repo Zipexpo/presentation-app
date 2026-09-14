@@ -4,9 +4,14 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDB } from '@/lib/db';
 import Class from '@/models/Class';
 import User from '@/models/User';
+import ProjectSubmission from '@/models/ProjectSubmission';
 import bcrypt from 'bcryptjs';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Roster files can spell the same name with different bytes (Vietnamese exported on macOS is NFD,
+// stray double spaces), so names are compared cleaned and only real spelling changes count.
+const cleanName = (value) => String(value ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
 
 export async function GET(request, { params }) {
     const session = await getServerSession(authOptions);
@@ -45,26 +50,38 @@ export async function POST(request, { params }) {
         if (!classDoc) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
 
         const addedStudentIds = [];
+        const renamed = [];
         const errors = [];
         const { sendAccountCreationEmail } = await import('@/lib/email');
 
         for (const student of students) {
-            if (!student.email || !student.name) {
+            const name = cleanName(student.name);
+            if (!student.email || !name) {
                 errors.push({ student, error: 'Missing email or name' });
                 continue;
             }
 
             const email = student.email.trim().toLowerCase();
-            const name = student.name.trim();
             const studentId = student.studentId ? String(student.studentId).trim() : null;
 
-            // 1. Check if user exists
-            let user = await User.findOne({
+            // 1. Check if user exists. Student ID is the roster's identity key, so it wins over email,
+            // but a row whose ID and email belong to two different accounts is ambiguous: skip it.
+            const matches = await User.find({
                 $or: [
                     { email: email },
                     ...(studentId ? [{ studentId: studentId }] : [])
                 ]
             });
+            const byStudentId = studentId ? matches.find(u => u.studentId === studentId) : undefined;
+            const byEmail = matches.find(u => u.email === email);
+            if (byStudentId && byEmail && byStudentId !== byEmail) {
+                errors.push({
+                    student: { email, name },
+                    error: `Skipped: Student ID ${studentId} belongs to ${byStudentId.email}, but this email belongs to another account`,
+                });
+                continue;
+            }
+            let user = byStudentId || byEmail;
 
             // 2. If not, create
             if (!user) {
@@ -131,6 +148,36 @@ export async function POST(request, { params }) {
                     user.studentId = studentId;
                     await user.save();
                 }
+
+                // Re-uploading a corrected roster is how teachers fix misspelled names, so the file's
+                // name wins for the account holding this Student ID.
+                if (studentId && cleanName(user.name) !== name) {
+                    if (user.studentId !== studentId) {
+                        errors.push({
+                            student: { email, name },
+                            error: `Name not updated: this account's Student ID is ${user.studentId}, not ${studentId}`,
+                        });
+                    } else if (user.role !== 'student') {
+                        errors.push({
+                            student: { email, name },
+                            error: `Name not updated: ${user.email} is a ${user.role} account`,
+                        });
+                    } else {
+                        // Project groups keep their own copy of each member's name, and "Add Me" leaves
+                        // the copy's studentId empty, so fix copies by either key. Copies go first: if
+                        // the account update then fails, a retry still sees the old name and redoes both.
+                        for (const [key, value] of Object.entries({ studentId, email: user.email })) {
+                            if (!value) continue; // an empty key would match every copy lacking it
+                            await ProjectSubmission.updateMany(
+                                { [`members.${key}`]: value },
+                                { $set: { 'members.$[m].name': name } },
+                                { arrayFilters: [{ [`m.${key}`]: value }] }
+                            );
+                        }
+                        await User.updateOne({ _id: user._id }, { $set: { name } });
+                        renamed.push({ studentId, from: user.name, to: name });
+                    }
+                }
             }
 
             // 3. Add to Class
@@ -145,6 +192,7 @@ export async function POST(request, { params }) {
         return NextResponse.json({
             success: true,
             addedCount: addedStudentIds.length,
+            renamed,
             errors
         });
 

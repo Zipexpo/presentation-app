@@ -107,6 +107,7 @@ export default function ClassDetailPage() {
                 }
 
                 let totalAdded = 0;
+                let totalRenamed = [];
                 let totalErrors = [];
                 let failedBatches = 0;
 
@@ -122,6 +123,9 @@ export default function ClassDetailPage() {
                         const data = await res.json();
                         if (data.success) {
                             totalAdded += data.addedCount || 0;
+                            if (data.renamed) {
+                                totalRenamed = [...totalRenamed, ...data.renamed];
+                            }
                             if (data.errors) {
                                 totalErrors = [...totalErrors, ...data.errors];
                             }
@@ -141,15 +145,17 @@ export default function ClassDetailPage() {
                 setImportResult({
                     success: failedBatches < chunks.length,
                     addedCount: totalAdded,
+                    renamed: totalRenamed,
                     errors: totalErrors
                 });
 
-                if (totalAdded > 0) {
+                // A re-upload that only fixes names adds nobody, but the table still needs refreshing.
+                if (totalAdded > 0 || totalRenamed.length > 0) {
                     fetchClassData();
                     setCsvFile(null);
                     setNotification({
                         type: 'success',
-                        message: `Process complete: Imported ${totalAdded} students. ${totalErrors.length > 0 ? `(${totalErrors.length} warnings)` : ''}`
+                        message: `Process complete: Imported ${totalAdded} students${totalRenamed.length > 0 ? `, updated ${totalRenamed.length} names` : ''}. ${totalErrors.length > 0 ? `(${totalErrors.length} warnings)` : ''}`
                     });
                 } else if (totalErrors.length > 0) {
                     setNotification({ type: 'error', message: 'Import failed for all students.' });
@@ -300,7 +306,7 @@ export default function ClassDetailPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Import Students</CardTitle>
-                            <CardDescription>Bulk add students via CSV.</CardDescription>
+                            <CardDescription>Bulk add students via CSV. Re-uploading corrects names by Student ID.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
@@ -324,12 +330,22 @@ export default function ClassDetailPage() {
                                         <>
                                             <p className="font-bold">Success!</p>
                                             <p>Added {importResult.addedCount} students.</p>
+                                            {importResult.renamed?.length > 0 && (
+                                                <div className="mt-2 text-xs">
+                                                    <p className="font-semibold">Names updated ({importResult.renamed.length}):</p>
+                                                    <ul className="list-disc pl-4">
+                                                        {importResult.renamed.map((r, i) => (
+                                                            <li key={i}><span className="font-mono">{r.studentId}</span>: {r.from} → {r.to}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
                                             {importResult.errors?.length > 0 && (
                                                 <div className="mt-2 text-xs">
                                                     <p className="font-semibold">Warnings:</p>
                                                     <ul className="list-disc pl-4">
                                                         {importResult.errors.map((e, i) => (
-                                                            <li key={i}>{e.error} ({e.student.email})</li>
+                                                            <li key={i}>{e.error}{e.student?.email && ` (${e.student.email})`}</li>
                                                         ))}
                                                     </ul>
                                                 </div>
