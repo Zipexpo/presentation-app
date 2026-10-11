@@ -42,6 +42,10 @@ const UserSchema = new mongoose.Schema({
   // Where to send the person after they confirm, when they registered from a partner app such as
   // Teamwo. Only an API-key caller can set it, so the verify page never follows a URL a visitor typed.
   verificationReturnTo: String,
+  // The last used verification link (sha256) and until when it still answers "done": mail
+  // scanners open links before the person does.
+  verificationUsedHash: String,
+  verificationUsedUntil: Date,
   // Password reset (lib/registration.js): sha256 of the emailed token and its expiry.
   resetToken: String,
   resetTokenExpires: Date,

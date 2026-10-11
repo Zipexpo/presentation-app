@@ -13,6 +13,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
  * Self-registration. It used to post to /api/register (which does not exist) and redirect to a
  * /verify-email page that was never built, so no student could ever sign themselves up.
  */
+// Mirrors STUDENT_DOMAINS in lib/registration.js (the server is what enforces it).
+const DOMAINS = (process.env.NEXT_PUBLIC_REGISTER_EMAIL_DOMAINS || 'student.hcmus.edu.vn').split(',').map((d) => d.trim().toLowerCase());
+
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: '', email: '', studentId: '', password: '', confirm: '' });
@@ -21,7 +24,9 @@ export default function RegisterPage() {
 
   const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setError(''); };
   const mismatch = form.confirm && form.password !== form.confirm;
-  const ready = form.name.trim() && form.email.trim() && form.password.length >= 8 && form.password === form.confirm;
+  const domain = form.email.trim().toLowerCase().split('@')[1] || '';
+  const wrongDomain = form.email.includes('@') && domain.includes('.') && !DOMAINS.includes(domain);
+  const ready = form.name.trim() && form.email.trim() && !wrongDomain && DOMAINS.includes(domain) && form.password.length >= 8 && form.password === form.confirm;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,7 +55,7 @@ export default function RegisterPage() {
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">Tạo tài khoản</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Một tài khoản dùng cho cả hệ thống thuyết trình và Teamwo.
+            Dành cho sinh viên. Một tài khoản dùng cho cả hệ thống thuyết trình và Teamwo. Giảng viên liên hệ quản trị viên để được cấp tài khoản.
           </p>
         </div>
 
@@ -68,8 +73,12 @@ export default function RegisterPage() {
           <div>
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={form.email} onChange={set('email')} required autoComplete="email" className="mt-1"
-              placeholder="mssv@student.hcmus.edu.vn" />
-            <p className="mt-1 text-xs text-gray-500">Nên dùng email trường. Bạn sẽ nhận một liên kết để kích hoạt tài khoản.</p>
+              placeholder={`mssv@${DOMAINS[0]}`} />
+            {wrongDomain ? (
+              <p className="mt-1 text-sm text-red-500">Chỉ đăng ký được bằng email sinh viên (@{DOMAINS[0]}).</p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-500">Email sinh viên (@{DOMAINS[0]}). Bạn sẽ nhận một liên kết để kích hoạt tài khoản.</p>
+            )}
           </div>
           <div>
             <Label htmlFor="studentId">MSSV <span className="font-normal text-gray-400">(không bắt buộc)</span></Label>

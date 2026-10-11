@@ -16,6 +16,7 @@ const ERRORS = {
   unverified: 'Email chưa được kích hoạt. Mở thư “Xác nhận email” trong hộp thư (xem cả Spam).',
   no_password: 'Tài khoản này đăng nhập bằng Google/Microsoft. Dùng nút bên dưới, hoặc “Quên mật khẩu” để đặt mật khẩu.',
   disabled: 'Tài khoản đã bị vô hiệu hoá. Liên hệ giảng viên hoặc quản trị viên.',
+  not_student_email: 'Chưa có tài khoản cho email này. Sinh viên đăng ký bằng email sinh viên; giảng viên liên hệ quản trị viên để được cấp tài khoản.',
   OAuthAccountNotLinked: 'Email này đã có tài khoản. Đăng nhập bằng mật khẩu rồi liên kết Google/Microsoft trong Hồ sơ.',
 }
 
@@ -26,7 +27,15 @@ const NOTICES = {
 
 /** Same-site paths only, or /login?callbackUrl=https://elsewhere would forward people off-site. */
 function safePath(p) {
-  return p && p.startsWith('/') && !p.startsWith('//') ? p : '/'
+  // Parsed, not prefix-checked: "/\evil.com" or "/<tab>/evil.com" start with "/" but browsers
+  // read them as another site.
+  if (!p || !p.startsWith('/')) return '/'
+  try {
+    const u = new URL(p, 'http://site.invalid')
+    return u.origin === 'http://site.invalid' ? u.pathname + u.search + u.hash : '/'
+  } catch {
+    return '/'
+  }
 }
 
 function LoginForm() {

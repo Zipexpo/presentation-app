@@ -44,6 +44,11 @@ export async function POST(req) {
         if (user.active === false) {
             return NextResponse.json({ error: 'Account disabled', code: 'disabled' }, { status: 403 });
         }
+        // A temporary password (teacher import, admin-created) must be replaced here first, as it
+        // is on this app's own sign-in; through SSO it could otherwise be used forever.
+        if (user.mustChangePassword) {
+            return NextResponse.json({ error: 'Password change required', code: 'must_change' }, { status: 403 });
+        }
 
         // Optional signed token for partner apps. Only issued with a real secret: the old
         // hardcoded fallback let anyone forge it whenever NEXTAUTH_SECRET was missing.

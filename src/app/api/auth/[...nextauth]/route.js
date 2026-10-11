@@ -6,6 +6,7 @@ import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import DomainRole from '@/models/DomainRole';
 import bcrypt from 'bcryptjs';
+import { STUDENT_DOMAINS } from '@/lib/registration';
 
 /** Emails are matched case-insensitively ("An@x.com" signed up, "an@x.com" typed). */
 function findUserByEmail(email) {
@@ -196,14 +197,14 @@ export const authOptions = {
         return true;
       }
 
-      // New user - determine role based on domain settings
-      const domain = email.split('@')[1];
-      let role = 'student';
-
+      // New user. Signing in with Google/Microsoft for the first time creates an account, so it
+      // follows the same rule as /register: a student address, or a domain an admin configured
+      // (Admin → domains, e.g. lecturers' @hcmus.edu.vn). Any other address used to become a
+      // student account here.
+      const domain = String(email || '').split('@')[1]?.toLowerCase() || '';
       const domainRole = await DomainRole.findOne({ domain });
-      if (domainRole) {
-        role = domainRole.role;
-      }
+      if (!domainRole && !STUDENT_DOMAINS.includes(domain)) return '/login?error=not_student_email';
+      const role = domainRole?.role || 'student';
 
       const newUser = new User({
         email,

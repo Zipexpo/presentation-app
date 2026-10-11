@@ -20,6 +20,14 @@ export async function POST(request) {
 
   await connectToDB();
 
+  // Only for an account that has no password yet (first Google/Microsoft sign-in). Otherwise any
+  // open session could set a new password without knowing the current one.
+  const user = await User.findById(session.user.id).select('password profileCompleted');
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (user.password && user.profileCompleted !== false) {
+    return NextResponse.json({ error: 'Tài khoản đã có mật khẩu. Đổi mật khẩu trong Hồ sơ.' }, { status: 403 });
+  }
+
   const hashedPassword = await bcrypt.hash(password, 12);
 
   await User.findByIdAndUpdate(
