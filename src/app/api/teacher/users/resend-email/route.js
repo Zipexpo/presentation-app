@@ -6,6 +6,7 @@ import User from '@/models/User';
 import Class from '@/models/Class';
 import { sendAccountCreationEmail } from '@/lib/email';
 import bcrypt from 'bcryptjs';
+import { tempPassword } from '@/lib/tempPassword';
 
 export async function POST(request) {
     const session = await getServerSession(authOptions);
@@ -39,7 +40,7 @@ export async function POST(request) {
         // This acts as a manual password reset by the teacher.
 
         // We must generate a NEW temp password.
-        let newTempPassword = `p!${user.studentId || Math.random().toString(36).slice(-6)}new`;
+        let newTempPassword = tempPassword();
 
         // Update password
         const hashedPassword = await bcrypt.hash(newTempPassword, 10);

@@ -20,9 +20,11 @@ export async function POST(req) {
         await connectToDB();
 
         // Find user and explicitly select password (which is often correctly deselected by default)
-        const user = await User.findOne({ email }).select('+password');
+        const escaped = String(email).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const user = await User.findOne({ email: new RegExp(`^${escaped}$`, 'i') }).select('+password');
         
-        if (!user) {
+        // A class sync mirrors students without a password; they have to register first.
+        if (!user || !user.password) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
@@ -32,14 +34,23 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
-        // Create an optional JWT so the external app can represent the user securely 
-        // without constantly needing the API key if they choose that architecture path.
-        const jwtSecret = process.env.NEXTAUTH_SECRET || 'fallback-secret-for-external-jwt';
-        const userToken = jwt.sign(
-            { id: user._id, email: user.email, role: user.role },
-            jwtSecret,
-            { expiresIn: '30d' }
-        );
+        // A self-registered account waits for its emailed link (it carries a pending token).
+        // Without this gate anyone could register someone else's address and, skipping the
+        // link, sign in to Teamwo as that person. Accounts a teacher or partner app provisioned
+        // never had a token, so they keep working as before.
+        if (!user.emailVerified && user.verificationToken) {
+            return NextResponse.json({ error: 'Email not verified', code: 'unverified' }, { status: 403 });
+        }
+        if (user.active === false) {
+            return NextResponse.json({ error: 'Account disabled', code: 'disabled' }, { status: 403 });
+        }
+
+        // Optional signed token for partner apps. Only issued with a real secret: the old
+        // hardcoded fallback let anyone forge it whenever NEXTAUTH_SECRET was missing.
+        const jwtSecret = process.env.EXTERNAL_JWT_SECRET || process.env.NEXTAUTH_SECRET;
+        const userToken = jwtSecret
+            ? jwt.sign({ id: user._id, email: user.email, role: user.role }, jwtSecret, { expiresIn: '30d' })
+            : null;
 
         // Sanitize response
         const userProfile = {

@@ -2,39 +2,41 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
+/**
+ * Self-registration. It used to post to /api/register (which does not exist) and redirect to a
+ * /verify-email page that was never built, so no student could ever sign themselves up.
+ */
 export default function RegisterPage() {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter();
+  const [form, setForm] = useState({ name: '', email: '', studentId: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
+
+  const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setError(''); };
+  const mismatch = form.confirm && form.password !== form.confirm;
+  const ready = form.name.trim() && form.email.trim() && form.password.length >= 8 && form.password === form.confirm;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!ready) return;
     setLoading(true);
     setError('');
-
     try {
-      const response = await fetch('/api/register', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, name, password }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name, email: form.email, studentId: form.studentId, password: form.password }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
-      }
-
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Đăng ký thất bại, thử lại.');
+      router.push(`/verify-email?email=${encodeURIComponent(data.email || form.email)}`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -42,74 +44,57 @@ export default function RegisterPage() {
     }
   };
 
-  const isStudentEmail = email.endsWith('@student.hcmus.edu.vn');
-  const isTeacherEmail = email.endsWith('@hcmus.edu.vn') || 
-                       email.endsWith('@mso.hcmus.edu.vn');
-
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold mb-6 text-center">Create Account</h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="email">Institutional Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            placeholder="student@student.hcmus.edu.vn or teacher@hcmus.edu.vn"
-          />
-          {email && !isStudentEmail && !isTeacherEmail && (
-            <p className="text-sm text-red-500 mt-1">
-              Please use your institutional email (@student.hcmus.edu.vn for students, 
-              @hcmus.edu.vn or @mso.hcmus.edu.vn for teachers)
-            </p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="name">Full Name</Label>
-          <Input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength="8"
-          />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">Tạo tài khoản</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Một tài khoản dùng cho cả hệ thống thuyết trình và Teamwo.
+          </p>
         </div>
 
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        <Button 
-          type="submit" 
-          className="w-full"
-          disabled={loading || (!isStudentEmail && !isTeacherEmail)}
-        >
-          {loading ? 'Processing...' : 'Register'}
-        </Button>
-      </form>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Họ và tên</Label>
+            <Input id="name" value={form.name} onChange={set('name')} required autoComplete="name" className="mt-1" placeholder="Nguyễn Văn A" />
+          </div>
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" value={form.email} onChange={set('email')} required autoComplete="email" className="mt-1"
+              placeholder="mssv@student.hcmus.edu.vn" />
+            <p className="mt-1 text-xs text-gray-500">Nên dùng email trường. Bạn sẽ nhận một liên kết để kích hoạt tài khoản.</p>
+          </div>
+          <div>
+            <Label htmlFor="studentId">MSSV <span className="font-normal text-gray-400">(không bắt buộc)</span></Label>
+            <Input id="studentId" value={form.studentId} onChange={set('studentId')} className="mt-1" placeholder="VD: 24130001" />
+          </div>
+          <div>
+            <Label htmlFor="password">Mật khẩu</Label>
+            <Input id="password" type="password" value={form.password} onChange={set('password')} required minLength={8}
+              autoComplete="new-password" className="mt-1" placeholder="Ít nhất 8 ký tự" />
+          </div>
+          <div>
+            <Label htmlFor="confirm">Nhập lại mật khẩu</Label>
+            <Input id="confirm" type="password" value={form.confirm} onChange={set('confirm')} required autoComplete="new-password" className="mt-1" />
+            {mismatch && <p className="mt-1 text-sm text-red-500">Hai mật khẩu chưa khớp.</p>}
+          </div>
 
-      <div className="mt-4 text-center text-sm">
-        Already have an account?{' '}
-        <a href="/login" className="text-blue-600 hover:underline">
-          Sign in
-        </a>
+          <Button type="submit" className="w-full" disabled={loading || !ready}>
+            {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang tạo tài khoản…</>) : 'Đăng ký'}
+          </Button>
+        </form>
+
+        <p className="text-center text-sm text-gray-600">
+          Đã có tài khoản?{' '}
+          <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">Đăng nhập</Link>
+        </p>
       </div>
     </div>
   );

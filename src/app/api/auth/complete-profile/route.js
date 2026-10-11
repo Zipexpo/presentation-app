@@ -12,31 +12,19 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { username, password } = await request.json();
-
-  if (!username || !password) {
-    return NextResponse.json(
-      { error: 'Username and password are required' },
-      { status: 400 }
-    );
+  // Only a password: sign-in is by email, so the username this used to require was never usable.
+  const { password } = await request.json().catch(() => ({}));
+  if (!password || String(password).length < 8) {
+    return NextResponse.json({ error: 'Mật khẩu cần ít nhất 8 ký tự.' }, { status: 400 });
   }
 
   await connectToDB();
-
-  const existingUsername = await User.findOne({ username });
-  if (existingUsername) {
-    return NextResponse.json(
-      { error: 'Username is already taken' },
-      { status: 400 }
-    );
-  }
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
   await User.findByIdAndUpdate(
     session.user.id,
     {
-      username,
       password: hashedPassword,
       profileCompleted: true,
     },

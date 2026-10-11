@@ -28,7 +28,7 @@ const apiKeySchema = new mongoose.Schema({
     // empty array, which is treated as full access for backwards compatibility (see ALL_SCOPES).
     scopes: {
         type: [String],
-        enum: ['users:read', 'users:write', 'users:delete', 'auth:login', 'sync:class'],
+        enum: ['users:read', 'users:write', 'users:delete', 'auth:login', 'auth:register', 'sync:class'],
         default: ['users:read', 'auth:login', 'sync:class']
     },
     lastUsedAt: {
@@ -42,6 +42,7 @@ apiKeySchema.statics.ALL_SCOPES = [
     { id: 'users:write', label: 'Create / update accounts', hint: 'POST + PUT /api/external/users' },
     { id: 'users:delete', label: 'Delete accounts', hint: 'DELETE /api/external/users/[id] — permanent' },
     { id: 'auth:login', label: 'Verify passwords (SSO)', hint: 'POST /api/external/auth/login' },
+    { id: 'auth:register', label: 'Sign up new accounts', hint: 'POST /api/external/auth/register — still needs the emailed link to activate' },
     { id: 'sync:class', label: 'Sync groups', hint: '/api/external/sync/class — still needs a per-class code' },
 ];
 

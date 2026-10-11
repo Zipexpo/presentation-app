@@ -3,6 +3,7 @@ import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import { validateApiKey } from '@/lib/apiAuth';
 import bcrypt from 'bcryptjs';
+import { PUBLIC_USER_FIELDS, WRITABLE_USER_FIELDS } from '@/lib/publicUser';
 
 // GET: Fetch a specific user
 export async function GET(req, { params }) {
@@ -11,7 +12,7 @@ export async function GET(req, { params }) {
 
     try {
         await connectToDB();
-        const user = await User.findById(params.id).select('-password').lean();
+        const user = await User.findById(params.id).select(PUBLIC_USER_FIELDS).lean();
 
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -33,16 +34,29 @@ export async function PUT(req, { params }) {
         const body = await req.json();
         await connectToDB();
 
-        // Prevent password from being updated via this plain mechanism without careful handling
-        if (body.password) {
-             body.password = await bcrypt.hash(body.password, 10);
+        // Only profile fields: `$set: body` let a key holder set role 'admin', emailVerified or
+        // the linked accounts.
+        const update = {};
+        for (const k of WRITABLE_USER_FIELDS) if (body[k] !== undefined) update[k] = body[k];
+        // Student ↔ teacher is a normal change; making someone admin is not an API matter.
+        if (body.role !== undefined) {
+            if (!['student', 'teacher'].includes(body.role)) {
+                return NextResponse.json({ error: 'role must be student or teacher' }, { status: 400 });
+            }
+            update.role = body.role;
+        }
+        if (update.password !== undefined) {
+            if (String(update.password).length < 8) {
+                return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+            }
+            update.password = await bcrypt.hash(String(update.password), 12);
         }
 
         const updatedUser = await User.findByIdAndUpdate(
             params.id,
-            { $set: body },
+            { $set: update },
             { new: true, runValidators: true }
-        ).select('-password').lean();
+        ).select(PUBLIC_USER_FIELDS).lean();
 
         if (!updatedUser) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });

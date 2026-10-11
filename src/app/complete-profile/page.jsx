@@ -11,7 +11,6 @@ export default function CompleteProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -30,8 +29,12 @@ export default function CompleteProfilePage() {
     e.preventDefault()
     setError('')
 
+    if (password.length < 8) {
+      setError('Mật khẩu cần ít nhất 8 ký tự.')
+      return
+    }
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError('Hai mật khẩu chưa khớp.')
       return
     }
 
@@ -40,12 +43,12 @@ export default function CompleteProfilePage() {
       const res = await fetch('/api/auth/complete-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ password }),
       })
 
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to complete profile')
+        throw new Error(data.error || 'Không lưu được, thử lại.')
       }
 
       // Profile saved; sign out so the user can log in with the new password
@@ -64,23 +67,15 @@ export default function CompleteProfilePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full space-y-6 bg-white p-6 rounded-lg shadow">
-        <h1 className="text-2xl font-bold text-center">Complete your profile</h1>
+        <h1 className="text-2xl font-bold text-center">Đặt mật khẩu</h1>
         <p className="text-sm text-gray-600 text-center">
-          Choose a username and password to finish setting up your account.
+          Đặt mật khẩu để đăng nhập bằng email {session?.user?.email ? <b>{session.user.email}</b> : null} (cả ở Teamwo),
+          ngoài Google/Microsoft. {/* The old form also asked for a username nothing could sign in with. */}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Mật khẩu</Label>
             <Input
               id="password"
               type="password"
@@ -91,7 +86,7 @@ export default function CompleteProfilePage() {
             />
           </div>
           <div>
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword">Nhập lại mật khẩu</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -107,7 +102,7 @@ export default function CompleteProfilePage() {
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Saving...' : 'Save and continue'}
+            {loading ? 'Đang lưu…' : 'Lưu và tiếp tục'}
           </Button>
         </form>
       </div>

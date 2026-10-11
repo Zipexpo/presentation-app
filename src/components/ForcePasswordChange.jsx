@@ -35,8 +35,8 @@ export default function ForcePasswordChange() {
             return;
         }
 
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters');
+        if (password.length < 8) {
+            setError('Mật khẩu cần ít nhất 8 ký tự');
             return;
         }
 

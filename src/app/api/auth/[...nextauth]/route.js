@@ -7,6 +7,22 @@ import User from '@/models/User';
 import DomainRole from '@/models/DomainRole';
 import bcrypt from 'bcryptjs';
 
+/** Emails are matched case-insensitively ("An@x.com" signed up, "an@x.com" typed). */
+function findUserByEmail(email) {
+  const escaped = String(email).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return User.findOne({ email: new RegExp(`^${escaped}$`, 'i') });
+}
+
+/** The fields the session carries, always taken from the database row. */
+function sessionFields(u) {
+  return {
+    id: u._id,
+    role: u.role,
+    mustChangePassword: !!u.mustChangePassword,
+    profileCompleted: u.profileCompleted !== false,
+  };
+}
+
 export const authOptions = {
   providers: [
     // 1. Keep your existing credentials provider
@@ -16,27 +32,19 @@ export const authOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
+      // Errors are thrown as codes; /login maps them to messages. Returning null for every case
+      // showed the literal "CredentialsSignin", and a Google-only account (no password) crashed
+      // bcrypt with "Illegal arguments".
       async authorize(credentials) {
         await connectToDB();
-        console.log('Login attempt:', credentials.email);
-
-        const user = await User.findOne({ email: credentials.email });
-
-        if (!user) {
-          console.log('Login failed: User not found');
-          return null;
-        }
-
-        if (!user.emailVerified) {
-          console.log('Login failed: Email not verified');
-          return null;
-        }
-
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) {
-          console.log('Login failed: Invalid password');
-          return null;
-        }
+        const email = String(credentials?.email || '').trim();
+        const user = email ? await findUserByEmail(email) : null;
+        if (!user) throw new Error('invalid');
+        if (!user.password) throw new Error('no_password');
+        const isValid = await bcrypt.compare(String(credentials?.password || ''), user.password);
+        if (!isValid) throw new Error('invalid');
+        if (!user.emailVerified) throw new Error('unverified');
+        if (user.active === false) throw new Error('disabled');
 
         return {
           id: user._id,
@@ -49,25 +57,22 @@ export const authOptions = {
       }
     }),
 
-    // 2. Add Google provider
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code"
-        }
-      }
-    }),
-
-    // 3. Add Microsoft provider
-    AzureADProvider({
-      clientId: process.env.AZURE_AD_CLIENT_ID,
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
-      tenantId: process.env.AZURE_AD_TENANT_ID
-    })
+    // 2/3. Google and Microsoft only when configured: an unconfigured provider still showed a
+    // button on /login that ended on /error?error=Configuration.
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [GoogleProvider({
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          authorization: { params: { prompt: "consent", access_type: "offline", response_type: "code" } }
+        })]
+      : []),
+    ...(process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET
+      ? [AzureADProvider({
+          clientId: process.env.AZURE_AD_CLIENT_ID,
+          clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
+          tenantId: process.env.AZURE_AD_TENANT_ID
+        })]
+      : []),
   ],
 
   callbacks: {
@@ -93,7 +98,8 @@ export const authOptions = {
       const { getServerSession } = await import('next-auth');
       const currentSession = await getServerSession(authOptions);
 
-      if (currentSession?.user) {
+      // Signing in with a password while signed in is switching accounts, not linking one.
+      if (currentSession?.user && account.provider !== 'credentials') {
         // User is logged in. We are LINKING this new account to them.
         const currentUser = await User.findById(currentSession.user.id);
 
@@ -105,6 +111,10 @@ export const authOptions = {
           'accounts.providerAccountId': account.providerAccountId
         });
 
+        // Linking keeps the person signed in as themselves: without this the new token took the
+        // provider's account id as `id` and lost the role, so /profile crashed and teachers got 403.
+        Object.assign(user, sessionFields(currentUser));
+
         if (accountAlreadyLinked) {
           if (accountAlreadyLinked._id.toString() === currentUser._id.toString()) {
             // Already linked to THIS user. Just allow signin.
@@ -114,7 +124,7 @@ export const authOptions = {
             // We return false or throw an error. 
             // NextAuth will redirect to error page.
             // ideally return string URL or false.
-            return '/student?error=AccountAlreadyLinked';
+            return '/profile?error=AccountAlreadyLinked';
           }
         }
 
@@ -136,15 +146,13 @@ export const authOptions = {
 
       // --- Standard Login / Registration Flow (No active session) ---
 
-      // For credentials login, just verify email
-      if (account.provider === 'credentials') {
-        const existingUser = await User.findOne({ email: user.email });
-        return !!existingUser;
-      }
+      // Credentials were fully checked in authorize() (password, verified, active).
+      if (account.provider === 'credentials') return true;
 
       // For social providers (Google/Microsoft)
       const email = profile?.email || user?.email;
-      const existingUser = await User.findOne({ email });
+      const existingUser = await findUserByEmail(email);
+      if (existingUser && existingUser.active === false) return '/login?error=disabled';
 
       // If user exists (via email/password)
       if (existingUser) {
@@ -169,9 +177,22 @@ export const authOptions = {
           });
         }
 
-        // Update user object for session
-        user.id = existingUser._id;
-        user.role = existingUser.role;
+        // Google/Microsoft just proved this address belongs to the person. If the account was
+        // still waiting for its emailed link, whoever registered it may not be them: drop that
+        // password and pending link, and let them set their own on /complete-profile.
+        if (!existingUser.emailVerified) {
+          existingUser.emailVerified = true;
+          existingUser.password = undefined;
+          existingUser.verificationToken = undefined;
+          existingUser.verificationTokenExpires = undefined;
+          existingUser.verificationReturnTo = undefined;
+          existingUser.profileCompleted = false;
+          await existingUser.save();
+        }
+
+        // Update user object for session (both flags too: a returning Google user skipped the
+        // forced password change and the profile completion otherwise).
+        Object.assign(user, sessionFields(existingUser));
         return true;
       }
 
@@ -208,9 +229,14 @@ export const authOptions = {
 
     // 5. Keep your existing JWT and session callbacks
     async jwt({ token, user, trigger, session }) {
-      if (trigger === "update" && session) {
-        // Allow updating token when password is changed
-        return { ...token, ...session.user, ...session };
+      if (trigger === "update") {
+        // Re-read from the database instead of trusting the client: update({ role: 'admin' })
+        // from the browser console used to be merged straight into the token.
+        await connectToDB();
+        const fresh = token.id ? await User.findById(token.id).catch(() => null) : null;
+        if (!fresh || fresh.active === false) return { ...token, role: undefined };
+        const f = sessionFields(fresh);
+        return { ...token, role: f.role, mustChangePassword: f.mustChangePassword, profileCompleted: f.profileCompleted };
       }
 
       if (user) {
@@ -235,7 +261,6 @@ export const authOptions = {
   // 6. Keep your existing pages configuration
   pages: {
     signIn: '/login',
-    signUp: '/register',
     verifyRequest: '/verify-email',
     error: '/error'
   },

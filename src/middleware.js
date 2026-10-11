@@ -10,9 +10,17 @@ export async function middleware(req) {
     return NextResponse.next();
   }
 
+  // Public files (icons under /logo icon/, images…) must load for signed-out visitors too, e.g.
+  // guests on /student/live/*.
+  if (/\.[a-z0-9]+$/i.test(path)) {
+    return NextResponse.next();
+  }
+
   // Define public/auth routes (without /auth prefix)
-  const publicRoutes = ['/', '/login', '/register', '/verify-email', '/error', '/complete-profile', '/logout'];
-  const authRoutes = ['/login', '/register', '/verify-email', '/error'];
+  const publicRoutes = ['/', '/login', '/register', '/verify-email', '/forgot-password', '/reset-password', '/error', '/complete-profile', '/logout'];
+  // Signed-in users are sent home from these. /verify-email and /reset-password are not here: a
+  // signed-in person must still be able to open the link from their email.
+  const authRoutes = ['/login', '/register', '/forgot-password', '/error'];
 
   // If accessing auth route while authenticated
   if (authRoutes.includes(path) && token) {

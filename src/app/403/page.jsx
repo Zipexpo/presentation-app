@@ -9,13 +9,13 @@ export default function ForbiddenPage() {
                 <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
                     <ShieldAlert className="w-10 h-10 text-red-500" />
                 </div>
-                <h1 className="text-3xl font-bold text-slate-800 mb-2">403 - Forbidden</h1>
+                <h1 className="text-3xl font-bold text-slate-800 mb-2">403 · Không có quyền</h1>
                 <p className="text-slate-500 mb-8 leading-relaxed">
-                    You do not have permission to access this page. This area is reserved for administrators only.
+                    Bạn không có quyền vào trang này. Khu vực này dành cho giảng viên hoặc quản trị viên.
                 </p>
                 <Link href="/">
                     <Button className="w-full bg-slate-800 hover:bg-slate-900 text-white gap-2 py-6 rounded-xl">
-                        <ArrowLeft className="w-4 h-4" /> Return to Home
+                        <ArrowLeft className="w-4 h-4" /> Về trang chủ
                     </Button>
                 </Link>
             </div>

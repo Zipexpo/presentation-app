@@ -32,11 +32,19 @@ const UserSchema = new mongoose.Schema({
   accounts: [{
     provider: String, // 'credentials', 'google', 'azure-ad'
     providerAccountId: String,
+    email: String, // the provider account's address (sign-in callbacks set it; strict mode dropped it)
     accessToken: String,
     refreshToken: String
   }],
+  // sha256 of the emailed token (lib/registration.js), never the token itself.
   verificationToken: String,
   verificationTokenExpires: Date,
+  // Where to send the person after they confirm, when they registered from a partner app such as
+  // Teamwo. Only an API-key caller can set it, so the verify page never follows a URL a visitor typed.
+  verificationReturnTo: String,
+  // Password reset (lib/registration.js): sha256 of the emailed token and its expiry.
+  resetToken: String,
+  resetTokenExpires: Date,
   role: {
     type: String,
     enum: ['student', 'teacher', 'admin'],

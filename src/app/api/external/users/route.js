@@ -3,6 +3,7 @@ import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
 import { validateApiKey } from '@/lib/apiAuth';
 import bcrypt from 'bcryptjs';
+import { PUBLIC_USER_FIELDS } from '@/lib/publicUser';
 
 // GET: Fetch a list of all users. Can filter by ?role=student or ?role=teacher
 export async function GET(req) {
@@ -20,7 +21,7 @@ export async function GET(req) {
         }
 
         // Return users without passwords
-        const users = await User.find(query).select('-password').sort({ createdAt: -1 }).lean();
+        const users = await User.find(query).select(PUBLIC_USER_FIELDS).sort({ createdAt: -1 }).lean();
 
         return NextResponse.json({ success: true, count: users.length, users });
     } catch (error) {
@@ -41,6 +42,10 @@ export async function POST(req) {
         if (!email || !name || !password) {
             return NextResponse.json({ error: 'Email, name, and password are required' }, { status: 400 });
         }
+        // An API key may create students and teachers, never admins.
+        if (role !== undefined && !['student', 'teacher'].includes(role)) {
+            return NextResponse.json({ error: 'role must be student or teacher' }, { status: 400 });
+        }
 
         await connectToDB();
 
@@ -58,7 +63,12 @@ export async function POST(req) {
             name,
             password: hashedPassword,
             role: role || 'student', // Default to student
-            studentId: studentId || undefined
+            studentId: studentId || undefined,
+            // Provisioned by a trusted key holder who emails the password, like a teacher import.
+            // Unverified, the account could sign in to Teamwo but never here; and the welcome email
+            // promises a forced password change on first login.
+            emailVerified: true,
+            mustChangePassword: true,
         });
 
         // Send the welcome email with credentials (best-effort — never block
@@ -68,7 +78,7 @@ export async function POST(req) {
         let emailError = null;
         try {
             const { sendAccountCreationEmail } = await import('@/lib/email');
-            const emailResult = await sendAccountCreationEmail(email, name, password, 'System');
+            const emailResult = await sendAccountCreationEmail(email, name, password, null);
             emailSent = !!emailResult.success;
             if (emailSent) {
                 newUser.accountCreationEmailSent = true;

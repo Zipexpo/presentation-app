@@ -15,6 +15,7 @@ const SCOPES = [
     { id: 'users:write', label: 'Create / update accounts', hint: 'POST + PUT /api/external/users' },
     { id: 'users:delete', label: 'Delete accounts', hint: 'DELETE — permanent, grant sparingly' },
     { id: 'auth:login', label: 'Verify passwords (SSO)', hint: 'POST /api/external/auth/login' },
+    { id: 'auth:register', label: 'Sign up new accounts', hint: 'Teamwo sign-up form — the emailed link still activates it' },
     { id: 'sync:class', label: 'Sync groups', hint: 'Still needs a per-class confirmation code' },
 ];
 const DEFAULT_SCOPES = ['users:read', 'auth:login', 'sync:class'];
@@ -325,8 +326,9 @@ export default function ApiKeysPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-700">Permissions</label>
                             <p className="text-xs text-slate-500">
-                                Grant only what this integration needs. Teamwo group sync needs just{' '}
-                                <code className="font-mono">sync:class</code> and <code className="font-mono">auth:login</code>.
+                                Grant only what this integration needs. Teamwo needs{' '}
+                                <code className="font-mono">auth:login</code>, <code className="font-mono">sync:class</code>
+                                {' '}and, for its sign-up form, <code className="font-mono">auth:register</code>.
                             </p>
                             <div className="space-y-1.5 rounded-lg border border-slate-200 p-3 bg-slate-50">
                                 {SCOPES.map((s) => (

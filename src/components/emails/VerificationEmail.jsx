@@ -1,26 +1,29 @@
 import { Html, Head, Preview, Body, Container, Text, Link, Section } from '@react-email/components';
 
-export default function VerificationEmail({ email, token }) {
-  const verificationUrl = `${process.env.NEXTAUTH_URL}/api/verify?token=${token}`;
-
+/**
+ * Sent when someone registers. `url` is the full verification link (built in lib/registration.js),
+ * so the template doesn't guess the route: the old one pointed at /api/verify, which never existed.
+ */
+export default function VerificationEmail({ name, email, url, via }) {
   return (
     <Html>
       <Head />
-      <Preview>Verify your email address</Preview>
+      <Preview>Xác nhận email để kích hoạt tài khoản</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Text style={h1}>Email Verification</Text>
-          <Text style={text}>Hello,</Text>
+          <Text style={h1}>Xác nhận email của bạn</Text>
+          <Text style={text}>Chào {name || 'bạn'},</Text>
           <Text style={text}>
-            Please click the link below to verify your email address ({email}) for the Presentation Management System.
+            Bạn vừa tạo tài khoản với email <b>{email}</b>
+            {via ? ` (đăng ký từ ${via})` : ''}. Bấm nút bên dưới để kích hoạt tài khoản. Liên kết có hiệu lực 24 giờ.
           </Text>
           <Section style={buttonContainer}>
-            <Link style={button} href={verificationUrl}>
-              Verify Email
+            <Link style={button} href={url}>
+              Xác nhận email
             </Link>
           </Section>
-          <Text style={text}>
-            If you didn&apos;t request this, please ignore this email.
+          <Text style={small}>
+            Tài khoản này dùng chung cho hệ thống thuyết trình và Teamwo. Nếu bạn không đăng ký, hãy bỏ qua email này.
           </Text>
         </Container>
       </Body>
@@ -49,6 +52,13 @@ const text = {
   fontSize: '16px',
   lineHeight: '1.4',
   color: '#484848',
+  margin: '16px 0',
+};
+
+const small = {
+  fontSize: '13px',
+  lineHeight: '1.4',
+  color: '#8a8a8a',
   margin: '16px 0',
 };
 

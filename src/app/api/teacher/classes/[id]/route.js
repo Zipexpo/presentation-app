@@ -6,6 +6,7 @@ import Class from '@/models/Class';
 import User from '@/models/User';
 import ProjectSubmission from '@/models/ProjectSubmission';
 import bcrypt from 'bcryptjs';
+import { tempPassword } from '@/lib/tempPassword';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -86,22 +87,10 @@ export async function POST(request, { params }) {
             // 2. If not, create
             if (!user) {
                 // Auto-create
-                // Password logic: 
-                // If birthday provided (DD/MM/YYYY): 'p!' + 'DDMMYYYY'
-                // Else: 'p!' + studentId + 'temp'
-
-                let rawPassword = '';
-                if (student.birthday) {
-                    // Extract DDMMYYYY from DD/MM/YYYY
-                    const parts = student.birthday.split('/');
-                    if (parts.length === 3) {
-                        rawPassword = `p!${parts[0]}${parts[1]}${parts[2]}`;
-                    }
-                }
-
-                if (!rawPassword) {
-                    rawPassword = `p!${studentId}temp`;
-                }
+                // A random temporary password, emailed to the student and changed on first login.
+                // It used to be 'p!' + birthday or 'p!' + MSSV + 'temp', which anyone who knows a
+                // classmate's MSSV or birthday could type to take the account over.
+                const rawPassword = tempPassword();
 
                 const hashedPassword = await bcrypt.hash(rawPassword, 10);
 

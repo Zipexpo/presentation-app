@@ -6,7 +6,15 @@ import User from '@/models/User';
 import AccountLinker from './AccountLinker';
 import { User as UserIcon, Mail, ShieldAlert } from 'lucide-react';
 
-export default async function ProfilePage() {
+const FLASH = {
+    linked: (p) => ({ ok: true, text: `Đã liên kết ${p === 'azure-ad' || p === 'microsoft' ? 'Microsoft' : 'Google'}. Từ giờ có thể đăng nhập bằng tài khoản đó.` }),
+    AccountAlreadyLinked: () => ({ ok: false, text: 'Tài khoản Google/Microsoft này đã liên kết với một người dùng khác.' }),
+};
+
+export default async function ProfilePage({ searchParams }) {
+    const sp = (await searchParams) || {};
+    // ?linked=… comes back from AccountLinker, ?error=… from the sign-in callback; neither was shown.
+    const flash = sp.error === 'AccountAlreadyLinked' ? FLASH.AccountAlreadyLinked() : sp.linked ? FLASH.linked(sp.linked) : null;
     const session = await getServerSession(authOptions);
     if (!session) redirect('/login');
 
@@ -27,6 +35,12 @@ export default async function ProfilePage() {
                     <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">Your Profile</h1>
                     <p className="text-slate-500 mt-2 text-lg">Manage your personal information and login methods.</p>
                 </div>
+
+                {flash && (
+                    <div className={`mb-6 rounded-xl border px-4 py-3 text-sm ${flash.ok ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                        {flash.text}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Left Column: Personal Info */}

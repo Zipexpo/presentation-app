@@ -36,7 +36,7 @@ export const AccountCreationEmail = ({ name, email, password, url, teacherName }
                     <strong>Important:</strong> You will be required to change your password upon your first login.
                 </Text>
                 <Section style={btnContainer}>
-                    <Link style={button} href={url}>
+                    <Link style={button} href={`${String(url || '').replace(/\/+$/, '')}/login`}>
                         Login to Dashboard
                     </Link>
                 </Section>

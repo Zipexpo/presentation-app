@@ -14,8 +14,8 @@ export async function POST(request) {
     try {
         const { currentPassword, newPassword, forceChange } = await request.json();
 
-        if (!newPassword || newPassword.length < 6) {
-            return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+        if (!newPassword || newPassword.length < 8) {
+            return NextResponse.json({ error: 'Mật khẩu cần ít nhất 8 ký tự' }, { status: 400 });
         }
 
         await connectToDB();
@@ -25,8 +25,11 @@ export async function POST(request) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // If not a forced change, verify current password
-        if (!forceChange) {
+        // The current password may be skipped only for the forced first-login change the database
+        // asked for. Trusting `forceChange` from the client let any session take the account over.
+        // An account without a password yet (Google-only) has nothing to confirm either.
+        const skipCheck = (forceChange && user.mustChangePassword) || !user.password;
+        if (!skipCheck) {
             const isValid = await bcrypt.compare(currentPassword, user.password);
             if (!isValid) {
                 return NextResponse.json({ error: 'Incorrect current password' }, { status: 400 });
